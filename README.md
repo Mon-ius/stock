@@ -1,4 +1,4 @@
-# Virtual Trading Platform
+# Virtual Trading Plus
 
 A fully self-contained, browser-based replication of the continuous double
 auction experimental market from **Dufwenberg, Lindqvist & Moore, "Bubbles and
