@@ -1,0 +1,46 @@
+<mxfile host="app.diagrams.net" modified="2026-04-13T00:00:00.000Z" agent="bubble-math" version="24.7.17" etag="fig2-elicitation" type="device">
+  <diagram name="Figure 2 — Prior Elicitation and EU Scoring" id="fig2-elicitation">
+    <mxGraphModel dx="900" dy="440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="860" pageHeight="380" math="1" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Row 1 — Prior Formation -->
+        <mxCell id="g1" value="Prior Formation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#1e3a8a;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="780" height="86" as="geometry"/>
+        </mxCell>
+        <mxCell id="n1a" value="T = 10 periods &#xa0; d ∈ {0,20}¢ &#xa0; 𝔼[d] = 10¢" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="54" width="370" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="n1b" value="prior&lt;sub&gt;t&lt;/sub&gt; = FV&lt;sub&gt;t&lt;/sub&gt; · (1 + b&lt;sub&gt;i&lt;/sub&gt; + ε)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="54" width="350" height="42" as="geometry"/>
+        </mxCell>
+
+        <!-- Row 2 — EU Maximization (utility functions nested inside) -->
+        <mxCell id="g2" value="Expected-Utility Maximization" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontColor=#14532d;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="130" width="780" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2a" value="U&lt;sub&gt;L&lt;/sub&gt;(w) = (w/w₀)²" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="164" width="244" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2b" value="U&lt;sub&gt;N&lt;/sub&gt;(w) = w/w₀" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="308" y="164" width="244" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2c" value="U&lt;sub&gt;A&lt;/sub&gt;(w) = √(w/w₀)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="566" y="164" width="224" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3a" value="EU(a) = p&lt;sub&gt;fill&lt;/sub&gt; · U(w₁) + (1 − p&lt;sub&gt;fill&lt;/sub&gt;) · U(w₀)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="220" width="640" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3b" value="a* = argmax EU(a), &#xa0; a ∈ {hold, buy, sell, bid, ask}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="160" y="270" width="520" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- Connector: Prior → EU group -->
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;html=1;endArrow=classic;strokeColor=#6b7280;strokeWidth=1.5;" edge="1" parent="1" source="g1" target="g2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

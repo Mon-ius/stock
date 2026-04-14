@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#1a2133"/>
+      <stop offset="100%" stop-color="#0b0f16"/>
+    </linearGradient>
+    <radialGradient id="bubble" cx="0.38" cy="0.38" r="0.75">
+      <stop offset="0%"   stop-color="#ffb0bf" stop-opacity="0.95"/>
+      <stop offset="55%"  stop-color="#ff5e78" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ff5e78" stop-opacity="0.00"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded-square background -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+
+  <!-- Faint gridline suggesting the chart grid -->
+  <line x1="6" y1="46" x2="58" y2="46" stroke="#242c42" stroke-width="1"/>
+
+  <!-- Declining fundamental value line (amber, dashed) -->
+  <line x1="8" y1="18" x2="56" y2="48"
+        stroke="#ffb347" stroke-width="2" stroke-dasharray="3 2" stroke-linecap="round"/>
+
+  <!-- Bubble glow behind the price peak -->
+  <circle cx="34" cy="18" r="16" fill="url(#bubble)"/>
+
+  <!-- Price curve — inflates above FV, peaks, then crashes back through it -->
+  <path d="M 6 46 C 18 46, 22 14, 34 12 S 52 48, 58 46"
+        fill="none" stroke="#4fa3ff" stroke-width="3"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Alpha mark in the bottom-right corner — the risk-preference share symbol -->
+  <text x="52" y="58" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="14" font-weight="700" fill="#ffd166">&#x03b1;</text>
+</svg>

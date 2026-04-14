@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Trading Platform</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="styles.css">
+<!--
+  KaTeX — client-side math rendering for the Architecture, Glossary,
+  and Slides tabs. Mirrors the lying project's setup (same version,
+  same auto-render contrib, same `$…$` / `$$…$$` delimiters). Loaded
+  from jsDelivr with `defer` so the rest of the page layout is not
+  blocked; main.js calls renderMathInElement() once on DOMContentLoaded
+  and again every time the active tab changes, so formulas inside a
+  hidden pane render the moment the user navigates to it.
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+<header class="app-header">
+  <div class="title">
+    <h1>Virtual Trading Platform</h1>
+  </div>
+  <!--
+    Nav tabs — top-level view selector modelled on the lying project's
+    nav-tabs. Each button flips which <section class="tab-pane"> is
+    visible below. Default tab is the live Experiment dashboard;
+    "Architecture" swaps in a static pipeline diagram describing how
+    the simulator's modules interact. Active state is maintained by
+    main.js on click and the underline is drawn with a 2px bottom
+    border reserved on every tab so activation does not shift layout.
+  -->
+  <nav class="nav-row">
+    <div class="nav-tabs" role="tablist">
+      <button class="nav-tab active" data-tab="experiment"   role="tab">Experiment</button>
+      <button class="nav-tab"        data-tab="architecture" role="tab">Architecture</button>
+      <button class="nav-tab"        data-tab="glossary"     role="tab">Glossary</button>
+      <button class="nav-tab"        data-tab="slides"       role="tab">Slides</button>
+      <a class="nav-tab" href="https://cloud.umami.is/share/ZOYSlBZpCjAKOCk7" target="_blank" rel="noopener" role="tab">Analytics</a>
+    </div>
+    <div class="plan-switch" role="group" aria-label="Research plan">
+      <button class="plan-btn active" data-plan="I" title="Plan I — algorithm-only. Each utility agent's prior equals the current fundamental value; posterior = w·prior + (1−w)·avg(foreign peer claims) with w = 0.6 + 0.1·min(3, roundsPlayed), so experience dampens peer influence. No LLM calls, no API key required.">Plan I</button>
+      <button class="plan-btn" data-plan="II" title="Plan II — LLM direct action with utility forms. Every period the model selects an action (BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD) given the agent's risk preference and the explicit utility function U_L / U_N / U_A. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan II</button>
+      <button class="plan-btn" data-plan="III" title="Plan III — LLM direct action with risk label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover utility-aware trading. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan III</button>
+    </div>
+  </nav>
+  <div class="controls">
+    <label>Speed
+      <input id="speed" type="range" min="1" max="50" value="14">
+    </label>
+    <button id="btn-start" class="primary">▶ Start</button>
+    <button id="btn-pause">⏸ Pause</button>
+    <button id="btn-reset" title="Roll a new random seed and redraw the population">↺ Reset</button>
+    <button id="btn-export" disabled title="Export all 10 sessions as JSON (available after batch completes)">⬇ Export</button>
+    <button id="btn-theme" class="theme-btn" title="Toggle theme (auto / light / dark)" aria-label="Toggle theme">◑</button>
+  </div>
+</header>
+
+<section class="tab-pane active" id="tab-experiment">
+<main class="grid">
+  <!-- ============================================================
+       Experiment settings — population mix (F/T/U summing to N=6),
+       risk-preference split (αL/αN/αA), and the AI endpoint for
+       Plans II/III. F and T are settable to 0 for a pure utility-
+       agent market. Paper-fixed constants (T, μ_d, dividend shape,
+       FV formula) live in the read-only Paper constants card below.
+       Structural edits (mix, risk shares) re-sample and reseed.
+       ============================================================ -->
+  <section class="panel panel-params" id="panel-params">
+    <div class="panel-header" id="panel-params-head">
+      <h2>Experiment settings</h2>
+      <span class="chevron" aria-hidden="true">▾</span>
+    </div>
+
+    <div class="params-body">
+
+      <details class="psec" open>
+        <summary>Trade settings <span class="muted" id="mix-total">(N = 6)</span></summary>
+        <div class="psec-body">
+          <div class="param-row bg-only" data-tip="N(F) — Fundamentalist agents in the background. Rational mean-reversion anchors on FV. Set to 0 to remove the rational anchor entirely and study how Utility agents behave without any FV-pinned counterparty. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
+            <div class="param-head">
+              <label for="p-count-f">Fundamentalists <span class="pval-sub">N(F)</span></label>
+              <span class="pval" id="v-count-f">0</span>
+            </div>
+            <input type="range" id="p-count-f" min="0" max="5" step="1" value="0">
+          </div>
+          <div class="param-row bg-only" data-tip="N(T) — Trend-follower agents in the background. Momentum / positive-feedback trader from the De Long–Shleifer–Summers–Waldmann (1990) lineage. Set to 0 to remove the momentum inflation channel entirely. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
+            <div class="param-head">
+              <label for="p-count-t">Trend followers <span class="pval-sub">N(T)</span></label>
+              <span class="pval" id="v-count-t">0</span>
+            </div>
+            <input type="range" id="p-count-t" min="0" max="5" step="1" value="0">
+          </div>
+          <div class="param-row dlm-treatment-row">
+            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV_t · (1 + δᵢ · β). δᵢ ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and β defaults to 0.15. The tilt bᵢ = δᵢ · β is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF bᵢ is zeroed and every agent starts from the true FV.">
+              <span>Prior Bias</span>
+              <label class="slide-toggle" for="p-applyBias">
+                <input type="checkbox" id="p-applyBias" checked>
+                <span class="slide-track"><span class="slide-thumb"></span></span>
+              </label>
+            </label>
+            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV_t · (1 + ε) where ε ~ U[−n, +n], n = 0.03 (±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
+              <span>Prior Noise</span>
+              <label class="slide-toggle" for="p-applyNoise">
+                <input type="checkbox" id="p-applyNoise" checked>
+                <span class="slide-track"><span class="slide-thumb"></span></span>
+              </label>
+            </label>
+          </div>
+          <div class="param-row dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. T2 (R4-⅔) replaces 2 agents in round 4; T4 (R4-⅓) replaces 4. One click of Start runs all 10 sessions.">
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="dlm-treatment" value="2" checked>
+              <span><strong>First T2</strong> · R4-&#8532;</span>
+            </label>
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="dlm-treatment" value="4">
+              <span><strong>First T4</strong> · R4-&#8531;</span>
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <details class="psec ext-only" open>
+        <summary>Risk preferences</summary>
+        <div class="psec-body">
+          <div class="param-row">
+            <div class="comp-bar" id="comp-bar">
+              <div class="seg seg-loving"><span>33%</span></div>
+              <div class="seg seg-neutral"><span>34%</span></div>
+              <div class="seg seg-averse"><span>33%</span></div>
+            </div>
+          </div>
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. U(w) = (w/w₀)² — strictly convex, so upside outcomes dominate expected-utility scoring. These agents bid aggressively and overshoot fundamental value; a high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
+            <div class="param-head">
+              <label for="p-risk-loving">Risk-loving <span data-sym="alphaL"></span> · <span data-sym="uLoving"></span></label>
+              <span class="pval" id="v-risk-loving">33%</span>
+            </div>
+            <input type="range" id="p-risk-loving" min="0" max="100" step="1" value="33">
+          </div>
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. U(w) = w/w₀ — linear. These agents price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
+            <div class="param-head">
+              <label for="p-risk-neutral">Risk-neutral <span data-sym="alphaN"></span> · <span data-sym="uNeutral"></span></label>
+              <span class="pval" id="v-risk-neutral">34%</span>
+            </div>
+            <input type="range" id="p-risk-neutral" min="0" max="100" step="1" value="34">
+          </div>
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. U(w) = √(w/w₀) — strictly concave, so downside losses dominate expected-utility scoring. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
+            <div class="param-head">
+              <label for="p-risk-averse">Risk-averse <span data-sym="alphaA"></span> · <span data-sym="uAverse"></span></label>
+              <span class="pval" id="v-risk-averse">33%</span>
+            </div>
+            <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
+          </div>
+        </div>
+      </details>
+
+      <details class="psec plan-ii-only" open>
+        <summary>AI endpoint <span class="muted">Plan II · LLM + utility forms</span></summary>
+        <div class="psec-body ai-config">
+          <p class="ai-config-note">
+            <strong>Required for Plan II.</strong> Every period boundary, each Utility
+            agent calls the LLM for a direct trading action (BUY_NOW, SELL_NOW,
+            BID_1, BID_3, ASK_1, ASK_3, HOLD). The structured prompt includes
+            market rules, decision-making principles, role-specific guidance,
+            and the explicit closed-form utility function ($U_L$, $U_N$, $U_A$).
+            Fields are read fresh from the DOM on every run (no localStorage);
+            if the key is empty the Start button will refuse to launch.
+          </p>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-provider-ii">Provider</label>
+            </div>
+            <select id="ai-provider-ii" class="input-text input-provider ai-shared-provider"></select>
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-key-ii">API key</label>
+            </div>
+            <input type="password" id="ai-key-ii" class="input-text input-key ai-shared-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-endpoint-ii">Endpoint (optional)</label>
+            </div>
+            <input type="text" id="ai-endpoint-ii" class="input-text input-endpoint ai-shared-endpoint" placeholder="" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-model-ii">Model</label>
+            </div>
+            <select id="ai-model-ii" class="input-text input-model ai-shared-model"></select>
+          </div>
+          <div class="ai-status" id="ai-status-ii" aria-live="polite"></div>
+        </div>
+      </details>
+
+      <details class="psec plan-iii-only" open>
+        <summary>AI endpoint <span class="muted">Plan III · LLM + risk label only</span></summary>
+        <div class="psec-body ai-config">
+          <p class="ai-config-note">
+            <strong>Required for Plan III.</strong> Every period boundary, each Utility
+            agent calls the LLM for a direct trading action. The structured
+            prompt supplies market rules, decision-making principles, and only
+            a natural-language risk-preference label (risk-loving, risk-neutral,
+            or risk-averse) — no closed-form utility function is provided.
+            Fields are read fresh from the DOM on every run (no localStorage);
+            if the key is empty the Start button will refuse to launch.
+          </p>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-provider-iii">Provider</label>
+            </div>
+            <select id="ai-provider-iii" class="input-text input-provider ai-shared-provider"></select>
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-key-iii">API key</label>
+            </div>
+            <input type="password" id="ai-key-iii" class="input-text input-key ai-shared-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-endpoint-iii">Endpoint (optional)</label>
+            </div>
+            <input type="text" id="ai-endpoint-iii" class="input-text input-endpoint ai-shared-endpoint" placeholder="" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="param-row">
+            <div class="param-head">
+              <label for="ai-model-iii">Model</label>
+            </div>
+            <select id="ai-model-iii" class="input-text input-model ai-shared-model"></select>
+          </div>
+          <div class="ai-status" id="ai-status-iii" aria-live="polite"></div>
+        </div>
+      </details>
+
+
+      <!-- ============================================================
+           Paper constants — fixed-by-design values from Dufwenberg,
+           Lindqvist & Moore (2005), §I. Read-only card nested inside
+           Experiment settings: the paper's experimental design pins
+           them (10-period asset life, {0, 20}¢ dividend, μ_d = 10¢,
+           backward-induction FV), so they cannot be edited and each
+           item carries the quoted source line. Open by default.
+           ============================================================ -->
+      <details class="psec const-paper" open>
+        <summary>Paper constants <span class="const-cite">Dufwenberg, Lindqvist &amp; Moore (2005), §I. Design</span></summary>
+        <div class="psec-body">
+          <dl class="const-list">
+            <div class="const-item">
+              <dt>N <span class="const-val">= 6</span></dt>
+              <dd class="const-label">Subjects per session</dd>
+              <dd class="const-note">&ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>rounds / session <span class="const-val">= 4</span></dt>
+              <dd class="const-label">Consecutive markets played by the same subjects</dd>
+              <dd class="const-note">&ldquo;A session involved four consecutive markets. In the following, we shall talk in terms of four different rounds. Note the distinction between rounds and periods; a round (being a market) consists of ten periods.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt><span data-sym="bigT"></span> <span class="const-val">= 10</span></dt>
+              <dd class="const-label">Asset life, in periods (per round)</dd>
+              <dd class="const-note">&ldquo;An asset's life span is ten periods.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>dividend <span class="const-val">∈ {0, 20}¢</span></dt>
+              <dd class="const-label">Per-period draw, equiprobable</dd>
+              <dd class="const-note">&ldquo;In each period, it pays a dividend of 0 or 20 U.S. cents, with equal probability.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
+            </div>
+            <div class="const-item">
+              <dt><span data-sym="muD"></span> <span class="const-val">= 10¢</span></dt>
+              <dd class="const-label">Expected dividend per period</dd>
+              <dd class="const-note">&ldquo;The expected dividend in each period is 10 cents (= ½ × 0 cents + ½ × 20 cents).&rdquo;<span class="const-src">§I, footnote 5</span></dd>
+            </div>
+            <div class="const-item">
+              <dt><span data-sym="fvDef"></span></dt>
+              <dd class="const-label">Fundamental value, by backward induction</dd>
+              <dd class="const-note">&ldquo;With k periods remaining, the fundamental value is k × 10 cents.&rdquo;<span class="const-src">§I, p. 1732</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>endowment A <span class="const-val">200¢, 6 shares</span></dt>
+              <dd class="const-label">One of two discrete starting bundles</dd>
+              <dd class="const-note">&ldquo;Before a market opened, half of the traders started with 200 cents and six assets, while each of the other traders started with 600 cents and two assets.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>endowment B <span class="const-val">600¢, 2 shares</span></dt>
+              <dd class="const-label">The other discrete starting bundle</dd>
+              <dd class="const-note">Both bundles have an identical buy-and-hold value of 1,000¢ under the risk-neutral fundamental <span data-sym="fvDef"></span>; the two types differ only in inventory/cash mix, so the split is distributional, not value-creating.<span class="const-src">§I, p. 1733</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>round-4 replacement <span class="const-val">R4-⅔ or R4-⅓</span></dt>
+              <dd class="const-label">Two-treatment design</dd>
+              <dd class="const-note">&ldquo;In the fourth round, depending on treatment, two or four experienced subjects who had participated in the first three rounds were randomly selected, removed, and replaced by the same number of inexperienced subjects.&rdquo; The paper labels these conditions by the fraction of experienced subjects remaining in round 4: R4-⅔ (four veterans + two fresh, shorthand T2) and R4-⅓ (two veterans + four fresh, shorthand T4); the R4-⅔ / R4-⅓ notation appears in the hypothesis row of Table 2.<span class="const-src">§I, p. 1733; Table 2, p. 1735</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>sessions <span class="const-val">= 10</span></dt>
+              <dd class="const-label">Five per treatment (R4-⅔ and R4-⅓)</dd>
+              <dd class="const-note">The multi-session batch runner in the DLM panel reproduces DLM's 10-session design by sequencing 5 × T2 (R4-⅔) then 5 × T4 (R4-⅓) through the simulator in one click; each session uses a fresh engine seed and a fresh two-type endowment draw.<span class="const-src">§I, Table 1</span></dd>
+            </div>
+            <div class="const-item">
+              <dt>payoff <span class="const-val">Σ final cash + 500¢</span></dt>
+              <dd class="const-label">Session payoff per subject</dd>
+              <dd class="const-note">&ldquo;Subjects were privately paid, in cash, the amount of their final cash holdings from each round. They were also paid a show-up fee of $5.&rdquo; All four rounds count; shares held at the end of a round are worth nothing (the asset&rsquo;s life span has ended).<span class="const-src">§I, p. 1735</span></dd>
+            </div>
+          </dl>
+        </div>
+      </details>
+
+      <!-- ============================================================
+           Hidden Constants — fixed-by-implementation values that are
+           NOT proposed in DLM 2005. The paper runs a continuous
+           2-minute z-Tree auction per period with human subjects and
+           specifies no agent model, so every knob the agent-based
+           replication needs for belief updates, trust, bias, and
+           order scoring is a simulator invention. `ticksPerPeriod`
+           is the discretization of the 2-minute window; the rest
+           are Utility-agent calibration constants. Folded by default
+           (the <details> is closed) so it does not dominate the
+           layout. Items tagged `.ext-only` only appear in
+           Utility-extended mode.
+           ============================================================ -->
+      <details class="psec const-sim">
+        <summary>Hidden Constants</summary>
+        <div class="psec-body">
+          <dl class="const-list">
+      <div class="const-item">
+        <dt>ticks / period <span class="const-val">= 18</span></dt>
+        <dd class="const-label">Agent decision rounds inside one period</dd>
+        <dd class="const-note">DLM 2005 runs a continuous 2-minute z-Tree double auction per period; this simulator discretizes that window into 18 decision rounds (≈ one agent turn every 6.7 real-time seconds) so the engine loop can step deterministically. 18 is dense enough to reproduce the bubble-crash pattern while keeping the replay buffer compact.<span class="const-src">engine.js — period-boundary trigger</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>naive prior weight <span class="const-val">= 0.60</span></dt>
+        <dd class="const-label">Belief blend for naive Utility agents</dd>
+        <dd class="const-note">Weight on the agent's own prior when blending incoming peer messages: $V_i^{\text{post}} = 0.60 \cdot V_i^{\text{prior}} + 0.40 \cdot \bar{m}$, i.e. $w = 0.60$ in the Plan I formula (see Architecture Figure 3). Not specified by DLM 2005, which studies human subjects and has no belief-update model. Chosen so naive agents move noticeably toward peers without collapsing onto them.<span class="const-src">agents.js — UTILITY_DEFAULTS.naivePriorWeight</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>skeptical prior weight <span class="const-val">= 0.90</span></dt>
+        <dd class="const-label">Belief blend for skeptical Utility agents</dd>
+        <dd class="const-note">Same convex combination as the naive weight but $w = 0.90$: $V_i^{\text{post}} = 0.90 \cdot V_i^{\text{prior}} + 0.10 \cdot \bar{m}$, so a skeptical agent hears messages but is barely moved by them. Not in DLM 2005; introduced so the strategy cube contains a "listen but don't trust" archetype.<span class="const-src">agents.js — UTILITY_DEFAULTS.skepticalPriorWeight</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>adaptive weight cap <span class="const-val">= 0.50</span></dt>
+        <dd class="const-label">Max one-period belief shift toward peers</dd>
+        <dd class="const-note">Upper bound on the fraction of belief an adaptive agent can shift toward the trust-weighted message mean $\bar{m}$ in a single period: even with fully-trusted senders, $w \geq 0.50$ so $V_i^{\text{post}}$ is at most 50% $\bar{m}$ + 50% $V_i^{\text{prior}}$. Not in DLM 2005; guards against runaway over-update from a single high-trust period.<span class="const-src">agents.js — UTILITY_DEFAULTS.adaptiveWeightCap</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>valuation noise <span class="const-val">= ±3%</span></dt>
+        <dd class="const-label">Per-tick uniform noise on the Utility-agent prior</dd>
+        <dd class="const-note">Before any bias or message update, each Utility agent draws $\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$, $\varepsilon \sim \mathcal{U}[-n,\, n]$, $n = 0.03$ (see Architecture Figure 2). Not in DLM 2005; added so trade decisions do not degenerate to lockstep when every biased/unbiased agent starts each tick from the identical prior.<span class="const-src">agents.js — UTILITY_DEFAULTS.valuationNoise</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>trust λ <span class="const-val">= 0.30</span></dt>
+        <dd class="const-label">EMA learning rate for the pairwise trust update</dd>
+        <dd class="const-note">Pairwise trust is updated as $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau_{r \to s} + \lambda \cdot \text{closeness}$, where closeness $= \max(0,\, 1 - |\hat{v}_s - \mathrm{VWAP}_t| / \mathrm{VWAP}_t)$. $\lambda = 0.30$ weights each new observation at 30%. Not in DLM 2005, which has no messaging layer; chosen for a balance between responsiveness and stability.<span class="const-src">engine.js — TrustTracker period close-out</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>passive fill probability <span class="const-val">= 0.30</span></dt>
+        <dd class="const-label">$p_{\text{fill}}$ heuristic for scoring non-crossing quotes</dd>
+        <dd class="const-note">Expected-utility score for a passive quote is $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$ with $p_{\text{fill}} = 0.30$ (see Architecture Figure 2). A full model would estimate $p_{\text{fill}}$ from order-book state; this is a deliberate constant placeholder and is not proposed by DLM 2005.<span class="const-src">agents.js — UtilityAgent scoring loop</span></dd>
+      </div>
+      <div class="const-item ext-only">
+        <dt>bias magnitude <span class="const-val">= 15%</span></dt>
+        <dd class="const-label">Persistent over/under-valuation of biased Utility agents</dd>
+        <dd class="const-note">Applied as $b_i = \delta_i \cdot \beta$ with $\beta = 0.15$; sign set by the per-slot bias direction $\delta_i \in \{-1, 0, +1\}$ (see Architecture Figure 2). Drives the biased U-agent slots in the default strategy cube (U2, U4, U5). Not in DLM 2005; chosen large enough to perturb the market without dominating the risk-preference split.<span class="const-src">agents.js — UTILITY_DEFAULTS.biasAmount</span></dd>
+      </div>
+          </dl>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <section class="panel panel-stats">
+    <div class="stat"><span class="label">Session</span><span class="value" id="stat-session">— / 10</span></div>
+    <div class="stat"><span class="label">Round</span><span class="value" id="stat-round">1 / 4</span></div>
+    <div class="stat"><span class="label">Period</span><span class="value" id="stat-period">1 / 10</span></div>
+    <div class="stat"><span class="label">Tick</span><span class="value" id="stat-tick">0</span></div>
+    <div class="stat"><span class="label">Price</span><span class="value price" id="stat-price">—</span></div>
+    <div class="stat"><span class="label">Fundamental</span><span class="value fv" id="stat-fv">—</span></div>
+    <div class="stat"><span class="label">Mispricing</span><span class="value bubble" id="stat-bubble">—</span></div>
+    <div class="stat"><span class="label">Volume · period</span><span class="value vol" id="stat-volume">0</span></div>
+  </section>
+
+  <section class="panel panel-agents">
+    <div class="agents-header">
+      <h2>Agents <span class="stage-label">Pre-run draft · editable before the simulation starts</span></h2>
+    </div>
+    <div id="agents-grid" class="agents-grid"></div>
+    <div class="agent-notes">
+      <h3 class="agent-notes-title">Note</h3>
+      <dl class="agent-notes-list">
+        <dt>Cash <span data-sym="cash"></span></dt>
+        <dd>experimental-currency balance held by agent <em>i</em> at tick <em>t</em>, used to finance bids and grown by realized sales plus end-of-period dividend receipts. The pre-run editable value is the initial endowment <span data-sym="cash0"></span>; in Dufwenberg, Lindqvist &amp; Moore (2005) subjects were seeded with either 200¢ or 600¢, while this simulator draws each slot uniformly from [800, 1200] ¢.</dd>
+        <dt>Shares <span data-sym="shares"></span></dt>
+        <dd>holding of the finite-life asset at tick <em>t</em> (initial endowment <span data-sym="shares0"></span>). Each held share pays a random dividend drawn from {0, 2<span data-sym="muD"></span>} at the end of every trading period (DLM 2005), so the theoretical risk-neutral fundamental value at the start of period <em>t</em> is <span data-sym="fvDef"></span>. DLM endowment classes held 6 or 2 shares; this simulator draws from {2, 3, 4}.</dd>
+        <dt>Wealth <span data-sym="wealth"></span></dt>
+        <dd>mark-to-fundamental total wealth, defined as <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="fv"></span>, or for Utility agents as <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="subjV"></span> (Lopez-Lira 2025). The Normalized Agent Utility plot is <span data-sym="uDef"></span>.</dd>
+        <dt>P&amp;L <span data-sym="pnl"></span></dt>
+        <dd>running change in total wealth relative to the initial endowment <span data-sym="wealth0"></span>, reported in experimental cents. Positive values render in green, losses in red. Aggregated across all agents, P&amp;L equals the cumulative dividends paid so the market is zero-sum up to the dividend stream, as in the Smith–Suchanek–Williams design replicated by DLM.</dd>
+        <dt>Subj V <span data-sym="subjV"></span></dt>
+        <dd>the Utility agent's private subjective valuation per share — the posterior $V_i^{\text{post}}$ from the active plan (Architecture Figure 3), updated each tick from $\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$ via the Plan I/II/III belief-revision protocol. Corresponds to the <em>valuation</em> field in Lopez-Lira's (2025) TradeDecisionSchema.</dd>
+        <dt>Report <span data-sym="reportV"></span></dt>
+        <dd>the valuation the Utility agent broadcasts to peers in its messages. Under communication strategy $\sigma_m = D$ (deceptive), <span data-sym="reportV"></span> ≠ <span data-sym="subjV"></span> via the distortion multiplier $\phi_m$ (see Architecture Figure 3, Plan I card); the lie-gap magnitude <span data-sym="lieGap"></span> drives the trust EMA update $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau + \lambda \cdot \text{closeness}$ and the mean-lie-magnitude statistic in the Experiment Metrics table.</dd>
+        <dt>Last action <span data-sym="action"></span></dt>
+        <dd>the most recent decision taken by agent <em>i</em> at tick <em>t</em>, displayed as a coloured tag on the card. In Plan I the agent selects $\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$ over $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$ scored under the risk-typed utility functional <span data-sym="uOfW"></span> (see Architecture Figure 2).</dd>
+        <dt>Subtitle</dt>
+        <dd>for classic agents, the strategy class (Fundamentalist, Trend follower, Random ZI, Experienced) together with set membership (<span data-sym="inF"></span>, <span data-sym="inT"></span>, <span data-sym="inR"></span>, <span data-sym="inE"></span>). For Utility agents, the risk preference and its functional: <em>Risk-loving</em> <span data-sym="uLoving"></span> (convex, upside-seeking), <em>Risk-neutral</em> <span data-sym="uNeutral"></span> (linear expected value), and <em>Risk-averse</em> <span data-sym="uAverse"></span> (concave, downside-sensitive).</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="panel panel-feed">
+    <h2>Trade &amp; Dividend Feed</h2>
+    <ul id="trade-feed"></ul>
+  </section>
+
+  <section class="panel panel-chart figure chart-price">
+    <header class="fig-head">
+      <span class="fig-num">Figure 1</span>
+      <h2 class="fig-title">Transaction Price Trajectory versus Risk-Neutral Fundamental Value</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="fvDef"></span> <em>risk-neutral fundamental value at the start of period t</em></div>
+    <canvas id="chart-price"></canvas>
+    <figcaption class="fig-caption">
+      <p>Tick-level transaction prices <span data-sym="price"></span> (accent line, one dot per executed trade) plotted against the deterministic step function <span data-sym="fv"></span> (amber dashes). Alternating vertical bands delimit the ten trading periods. In the Dufwenberg, Lindqvist &amp; Moore (2005) design a rational market should track the step line exactly; persistent excursions above it are the bubble and the crash toward <span data-sym="fvT"></span> = <span data-sym="muD"></span> in the final period is the collapse.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="price"></span></dt><dd>observed transaction price at tick <em>t</em></dd>
+          <dt><span data-sym="fv"></span></dt><dd>theoretical fundamental value at the start of period <em>t</em></dd>
+          <dt><span data-sym="muD"></span></dt><dd>expected per-period dividend (drawn uniformly from {0, 2<span data-sym="muD"></span>})</dd>
+          <dt><span data-sym="bigT"></span></dt><dd>terminal period of the finite-life asset</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-book">
+    <h2>Order Book</h2>
+    <div class="book-tables">
+      <div class="book-side">
+        <div class="side-label bids">BIDS</div>
+        <div class="book-head"><span>Price</span><span>Qty</span><span>Agent</span></div>
+        <ul class="book-list bids" id="bids-list"></ul>
+      </div>
+      <div class="book-side">
+        <div class="side-label asks">ASKS</div>
+        <div class="book-head"><span>Price</span><span>Qty</span><span>Agent</span></div>
+        <ul class="book-list asks" id="asks-list"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel panel-chart figure chart-bubble">
+    <header class="fig-head">
+      <span class="fig-num">Figure 2</span>
+      <h2 class="fig-title">Mispricing Magnitude and Price-to-Fundamental Ratio</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="absMispricing"></span> · <span data-sym="rhoDef"></span> <em>absolute and relative mispricing</em></div>
+    <canvas id="chart-bubble"></canvas>
+    <figcaption class="fig-caption">
+      <p>Absolute departure of the observed price from the theoretical fundamental value, filled as a red area. In Lopez-Lira (2025) the same information is expressed as the price-to-fundamental ratio <span data-sym="rhoT"></span>: values above one mark an overvaluation regime, values below one mark an undervaluation regime, and <span data-sym="rhoT"></span> ≈ 1 is consistent with rational pricing. The Experiment Metrics panel reports the normalized-deviation and amplitude statistics derived from this series.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="absMispricing"></span></dt><dd>absolute mispricing at tick <em>t</em></dd>
+          <dt><span data-sym="rhoT"></span></dt><dd>price-to-fundamental ratio (Lopez-Lira 2025)</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-volume">
+    <header class="fig-head">
+      <span class="fig-num">Figure 3</span>
+      <h2 class="fig-title">Trade Volume per Period</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="volDef"></span> <em>shares transacted in period t</em></div>
+    <canvas id="chart-volume"></canvas>
+    <figcaption class="fig-caption">
+      <p>Sum of share quantities exchanged within each trading period. High and persistent bars indicate active speculation; the classic Smith–Suchanek–Williams bubble is typically associated with a volume peak in the inflation phase followed by a cliff as the asset approaches expiry.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="volT"></span></dt><dd>total share volume traded in period <em>t</em></dd>
+          <dt><span data-sym="qOrder"></span></dt><dd>order quantity of a single executed trade</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-heatmap">
+    <header class="fig-head">
+      <span class="fig-num">Figure 4</span>
+      <h2 class="fig-title">Transaction Density over Price × Period</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="heatBinDef"></span> <em>two-dimensional trade histogram</em></div>
+    <canvas id="chart-heatmap"></canvas>
+    <figcaption class="fig-caption">
+      <p>Two-dimensional histogram of share quantity binned by transaction price (vertical axis) and trading period (horizontal axis). Warm cells concentrate the market's liquidity. Comparing the heat cloud against the downward-sloping fundamental staircase reveals whether the market is trading near rational value or persistently above it.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="heatBin"></span></dt><dd>cumulative share volume in the (price, period) bin</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-timeline">
+    <header class="fig-head">
+      <span class="fig-num">Figure 5</span>
+      <h2 class="fig-title">Agent Action Timeline</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="actionSet"></span> <em>per-tick agent decision</em></div>
+    <canvas id="chart-timeline"></canvas>
+    <div class="legend">
+      <span><i class="lg bid"></i>Bid</span>
+      <span><i class="lg ask"></i>Ask</span>
+      <span><i class="lg hold"></i>Hold</span>
+      <span><i class="lg trade"></i>Executed</span>
+    </div>
+    <figcaption class="fig-caption">
+      <p>One row per agent, one mark per decision. Column colour encodes the action type and a small accent dot below the mark records whether the submitted order was filled on the same tick. Contiguous green runs identify accumulators; contiguous red runs identify distributors; holds are the market's waiting population.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="action"></span></dt><dd>action taken by agent <em>i</em> at tick <em>t</em></dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <!-- ===========================================================
+       Extended panels (utility experiment mode).
+       All marked .ext-only; CSS hides them unless body.extended.
+       =========================================================== -->
+
+  <section class="panel panel-chart figure chart-valuation ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 6</span>
+      <h2 class="fig-title">Subjective Valuation: True versus Reported</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="valCompare"></span> · lie gap = <span data-sym="lieGap"></span> <em>private belief versus broadcast claim</em></div>
+    <canvas id="chart-valuation"></canvas>
+    <figcaption class="fig-caption">
+      <p>Solid lines trace each Utility agent's private belief <span data-sym="subjV"></span> over time. Filled dots mark broadcast messages carrying a reported valuation <span data-sym="reportV"></span>; deceptive reports are ringed red and connected to the sender's true belief by a dotted segment — the vertical distance between ring and line is the lie gap. The amber step line is the fundamental value for reference.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="subjV"></span></dt><dd>agent <em>i</em>'s private (true) subjective valuation at tick <em>t</em></dd>
+          <dt><span data-sym="reportV"></span></dt><dd>valuation reported in a broadcast message</dd>
+          <dt><span data-sym="lieGap"></span></dt><dd>lie gap for deceptive messages</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-utility ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 7</span>
+      <h2 class="fig-title">Normalized Agent Utility over Time</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="uDef"></span> <em>risk-adjusted wealth, normalized to initial endowment</em></div>
+    <canvas id="chart-utility"></canvas>
+    <figcaption class="fig-caption">
+      <p>Per-agent expected utility <span data-sym="uOfW"></span> evaluated at the running wealth <span data-sym="wealth"></span> = <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="fv"></span>, divided by the agent's own initial utility <span data-sym="wealth0"></span> so every trajectory starts at 1.0. Lines above the dashed baseline indicate positive risk-adjusted PnL; lines below indicate loss. The risk preference attached to each agent (convex, linear, concave) determines how aggressively a given wealth change is penalised or rewarded.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="uOfW"></span></dt><dd>risk-typed utility: <span data-sym="uLoving"></span>, <span data-sym="uNeutral"></span>, <span data-sym="uAverse"></span></dd>
+          <dt><span data-sym="wealth"></span></dt><dd>mark-to-fundamental wealth at tick <em>t</em></dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-ownership ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 8</span>
+      <h2 class="fig-title">Asset Ownership over Time</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="ownershipEq"></span> <em>shares held; total supply conserved</em></div>
+    <canvas id="chart-ownership"></canvas>
+    <figcaption class="fig-caption">
+      <p>Stacked area of each agent's inventory across ticks. Because the double auction conserves shares, the total height is always the aggregate endowment <span data-sym="bigQ"></span>. Widening bands identify agents who are accumulating, shrinking bands identify distributors, and any dramatic redistribution in the last few periods is typically the experienced trader liquidating before the asset expires worthless.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="shares"></span></dt><dd>shares held by agent <em>i</em> at tick <em>t</em></dd>
+          <dt><span data-sym="bigQ"></span></dt><dd>total shares outstanding (conserved across time)</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-messages ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 9</span>
+      <h2 class="fig-title">Broadcast Message Log</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="msgDef"></span> <em>per-tick public broadcast to all other agents</em></div>
+    <canvas id="chart-messages"></canvas>
+    <div class="legend">
+      <span><i class="lg bid"></i>Buy signal</span>
+      <span><i class="lg ask"></i>Sell signal</span>
+      <span><i class="lg hold"></i>Hold signal</span>
+      <span><i class="lg lie"></i>Deceptive</span>
+    </div>
+    <figcaption class="fig-caption">
+      <p>One dot per broadcast message, placed on the sender's row at the tick the message was sent. Dot colour encodes the signal (buy/sell/hold) and a red ring flags messages whose reported valuation diverges sufficiently from the sender's private belief to be classified as deceptive by the logger. Reading a column shows the instantaneous rumour mill; reading a row shows each agent's rhetorical stance over time.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="msgIt"></span></dt><dd>broadcast from agent <em>i</em> to the population at tick <em>t</em></dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-trust ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 10</span>
+      <h2 class="fig-title">Pairwise Trust Matrix</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="trustEq"></span> <em>exponential-moving-average update</em></div>
+    <canvas id="chart-trust"></canvas>
+    <figcaption class="fig-caption">
+      <p>Heatmap of receiver-to-sender trust values in [0, 1]. The diagonal is masked. Each off-diagonal cell records how well sender <em>s</em>'s recent valuation claims aligned with the period's volume-weighted average price, as seen by receiver <em>r</em>. Warm rows identify agents who tend to trust broadly; warm columns identify agents whose claims the population finds credible.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="trustRS"></span></dt><dd>trust held by receiver <em>r</em> in sender <em>s</em></dd>
+          <dt><span data-sym="lambdaRate"></span></dt><dd>trust learning rate (exponential-moving-average weight)</dd>
+          <dt><span data-sym="closenessRS"></span></dt><dd>1 − |claim − VWAP| / VWAP, clipped to [0, 1]</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-metrics figure ext-only" id="panel-metrics">
+    <header class="fig-head">
+      <span class="fig-num">Table 1</span>
+      <h2 class="fig-title">Market-Quality Statistics (Current Session)</h2>
+    </header>
+    <div id="metrics-body"></div>
+    <figcaption class="fig-caption">
+      <p>Quantitative summary in the notation of Dufwenberg, Lindqvist &amp; Moore (2005) and Lopez-Lira (2025). Haessel R&sup2; measures fit of the per-period mean price to fundamental value; the two normalized deviations capture total and average mispricing per share outstanding; amplitude is the peak-to-trough excursion of the mean-price residual normalized by the initial fundamental; turnover is the total shares traded divided by shares outstanding. The lower group reports allocative efficiency, aggregate welfare, and the deception statistics unique to the Utility population.</p>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-batch figure" id="panel-batch">
+    <header class="fig-head">
+      <span class="fig-num">Table 2</span>
+      <h2 class="fig-title">10-Session Batch Results</h2>
+    </header>
+    <div id="batch-results"></div>
+    <figcaption class="fig-caption">
+      <p>Per-round market-quality metrics across the 10-session DLM batch (5 &times; first treatment + 5 &times; second treatment). Each row is labelled <code>R<em>r</em>_S<em>s</em></code> (Round <em>r</em> of Session <em>s</em>). <strong>dev</strong> = mean absolute deviation |P &minus; FV| in &cent;; <strong>turn</strong> = shares traded / shares outstanding; <strong>vol</strong> = total shares exchanged; <strong>payoff</strong> = aggregate agent cash at round end.</p>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-replay">
+    <h2>Replay &amp; Trace Inspector</h2>
+    <div class="replay-controls">
+      <button id="btn-step-back">« Step</button>
+      <button id="btn-live" class="primary">● Live</button>
+      <button id="btn-step-fwd">Step »</button>
+      <span id="replay-position" class="replay-pos">Live — tick 0</span>
+    </div>
+    <input id="replay-slider" type="range" min="0" max="0" value="0" step="1">
+    <div class="trace-inspector">
+      <h3>Decisions recorded at this tick</h3>
+      <div id="trace-body"></div>
+    </div>
+  </section>
+</main>
+</section>
+
+<!--
+  Architecture tab — publication-quality figures documenting the
+  simulation's four-stage pipeline.  Each figure has its own inline
+  SVG (KaTeX-rendered via main.js._renderMath) and a companion
+  .drawio file for editing.  Figures follow AER numbering:
+    Figure 1 — pipeline overview
+    Figure 2 — prior elicitation and expected-utility scoring
+    Figure 3 — information aggregation protocols
+    Figure 4 — price discovery and market-quality diagnostics
+    Figure 5 — sample prompt (round-3 experienced LLM trader)
+-->
+<section class="tab-pane" id="tab-architecture">
+  <div class="arch-wrap">
+    <div class="arch-header">
+      <div class="arch-title-block">
+        <h2>System Design</h2>
+        <p class="arch-desc">Figures 1–4: the four-stage pipeline from asset fundamentals through information aggregation to price discovery. A single Start press runs 10 sessions ($R = 4$ rounds each, 720 ticks/session) with per-round data collected as $\texttt{R\{r\}\_S\{s\}}$.</p>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════
+         Figure 1 — Agent Decision Pipeline
+         ════════════════════════════════════════════════════ -->
+    <figure class="arch-figure">
+      <div class="arch-fig-header">
+        <figcaption><span class="fig-num">Figure 1</span> — Agent Decision Pipeline</figcaption>
+        <a class="btn-drawio" data-drawio="arch-pipeline.drawio" href="#" target="_blank" rel="noopener" title="Edit arch-pipeline.drawio in draw.io">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+          <span>Edit in draw.io</span>
+        </a>
+      </div>
+      <div class="arch-svg-container arch-diagram" id="arch-fig1">
+        <svg viewBox="0 0 760 352" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Figure 1 — Agent decision pipeline">
+          <defs>
+            <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- Stage 1 — Asset Fundamentals -->
+          <g class="arch-group g-paper">
+            <rect x="20" y="10" width="720" height="68" rx="10" ry="10"/>
+            <text x="380" y="30" class="g-label">Asset Fundamentals</text>
+          </g>
+          <g class="n n-paper" transform="translate(40 38)">
+            <rect width="680" height="34" rx="6" ry="6"/>
+            <foreignObject width="680" height="34">
+              <div class="fo-node"><div class="fo-t">$\mathrm{FV}_t = \mathbb{E}[d]\cdot(T - t + 1)$, &nbsp; $d \in \{0,20\}$¢, &nbsp; $T = 10$</div></div>
+            </foreignObject>
+          </g>
+
+          <path class="link" d="M 380 78 L 380 98"/>
+
+          <!-- Stage 2 — Prior Formation -->
+          <g class="arch-group g-strat">
+            <rect x="20" y="98" width="720" height="68" rx="10" ry="10"/>
+            <text x="380" y="118" class="g-label">Prior Formation</text>
+          </g>
+          <g class="n n-util" transform="translate(40 126)">
+            <rect width="340" height="34" rx="6" ry="6"/>
+            <foreignObject width="340" height="34">
+              <div class="fo-node"><div class="fo-t">$\text{prior}_t = \mathrm{FV}_t\!\cdot\!(1 + b_i + \varepsilon)$</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-eu" transform="translate(400 126)">
+            <rect width="320" height="34" rx="6" ry="6"/>
+            <foreignObject width="320" height="34">
+              <div class="fo-node"><div class="fo-t">$\mathrm{EU}(\alpha) = p_{\text{fill}}\!\cdot\!U(w_1) + (1\!-\!p_{\text{fill}})\!\cdot\!U(w_0)$</div></div>
+            </foreignObject>
+          </g>
+
+          <path class="link" d="M 380 166 L 380 186"/>
+
+          <!-- Stage 3 — Information Aggregation -->
+          <g class="arch-group g-plan">
+            <rect x="20" y="186" width="720" height="68" rx="10" ry="10"/>
+            <text x="380" y="206" class="g-label">Information Aggregation</text>
+          </g>
+          <g class="n n-msg" transform="translate(40 214)">
+            <rect width="220" height="34" rx="6" ry="6"/>
+            <foreignObject width="220" height="34">
+              <div class="fo-node"><div class="fo-t">Plan I · algorithmic</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-wang" transform="translate(275 214)">
+            <rect width="220" height="34" rx="6" ry="6"/>
+            <foreignObject width="220" height="34">
+              <div class="fo-node"><div class="fo-t">Plan II · LLM + forms</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-wang" transform="translate(510 214)">
+            <rect width="210" height="34" rx="6" ry="6"/>
+            <foreignObject width="210" height="34">
+              <div class="fo-node"><div class="fo-t">Plan III · LLM + label</div></div>
+            </foreignObject>
+          </g>
+
+          <path class="link" d="M 380 254 L 380 274"/>
+
+          <!-- Stage 4 — Price Discovery -->
+          <g class="arch-group g-market">
+            <rect x="20" y="274" width="720" height="68" rx="10" ry="10"/>
+            <text x="380" y="294" class="g-label">Price Discovery</text>
+          </g>
+          <g class="n n-book" transform="translate(40 302)">
+            <rect width="680" height="34" rx="6" ry="6"/>
+            <foreignObject width="680" height="34">
+              <div class="fo-node"><div class="fo-t">CDA: $\text{bid} \geq \text{ask} \Rightarrow$ trade &nbsp;|&nbsp; $R^2 \;\cdot\; \mathrm{ND} \;\cdot\; A \;\cdot\; \mathrm{TO}$</div></div>
+            </foreignObject>
+          </g>
+        </svg>
+      </div>
+
+      <div class="arch-defs">
+        <div class="arch-def-card card-paper">
+          <h4>Fundamental Value</h4>
+          <p class="role">Market constant</p>
+          <div class="formula">$$ \mathrm{FV}_t \;=\; \mathbb{E}[d] \cdot (T - t + 1), \qquad \mathbb{E}[d] = \tfrac{1}{2}(0) + \tfrac{1}{2}(20) = 10\text{¢} $$</div>
+          <p class="body">Risk-neutral price of one share at the start of period $t$: $T = 10$ periods of remaining asset life, $d \in \{0, 20\}$¢ i.i.d. dividend draws, yielding a deterministic staircase from $\mathrm{FV}_1 = 100$¢ to $\mathrm{FV}_{10} = 10$¢ that resets at every round boundary. The DLM (2005) market substrate lives underneath every plan.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ════════════════════════════════════════════════════
+         Figure 2 — Prior Elicitation and Expected-Utility Scoring
+         ════════════════════════════════════════════════════ -->
+    <figure class="arch-figure">
+      <div class="arch-fig-header">
+        <figcaption><span class="fig-num">Figure 2</span> — Prior Elicitation and Expected-Utility Scoring</figcaption>
+        <a class="btn-drawio" data-drawio="arch-elicitation.drawio" href="#" target="_blank" rel="noopener" title="Edit arch-elicitation.drawio in draw.io">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+          <span>Edit in draw.io</span>
+        </a>
+      </div>
+      <div class="arch-svg-container arch-diagram" id="arch-fig2">
+        <svg viewBox="0 0 760 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Figure 2 — Prior elicitation and expected-utility scoring">
+
+          <!-- Row 1 — Prior formation -->
+          <g class="arch-group g-paper">
+            <rect x="20" y="10" width="720" height="80" rx="10" ry="10"/>
+            <text x="380" y="30" class="g-label">Prior Formation</text>
+          </g>
+          <g class="n n-paper" transform="translate(40 40)">
+            <rect width="340" height="40" rx="6" ry="6"/>
+            <foreignObject width="340" height="40">
+              <div class="fo-node"><div class="fo-t">$T = 10$ periods &nbsp; $d \in \{0,20\}$¢ &nbsp; $\mathbb{E}[d] = 10$¢</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-util" transform="translate(400 40)">
+            <rect width="320" height="40" rx="6" ry="6"/>
+            <foreignObject width="320" height="40">
+              <div class="fo-node"><div class="fo-t">$\text{prior}_t = \mathrm{FV}_t\!\cdot\!(1 + b_i + \varepsilon)$</div></div>
+            </foreignObject>
+          </g>
+
+          <path class="link" d="M 380 90 L 380 116"/>
+
+          <!-- Row 2 — EU maximization (utility functions nested inside) -->
+          <g class="arch-group g-plan">
+            <rect x="20" y="116" width="720" height="164" rx="10" ry="10"/>
+            <text x="380" y="136" class="g-label">Expected-Utility Maximization</text>
+          </g>
+          <g class="n n-util" transform="translate(40 148)">
+            <rect width="224" height="40" rx="6" ry="6"/>
+            <foreignObject width="224" height="40">
+              <div class="fo-node"><div class="fo-t">$U_L(w) = (w/w_0)^2$</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-util" transform="translate(278 148)">
+            <rect width="224" height="40" rx="6" ry="6"/>
+            <foreignObject width="224" height="40">
+              <div class="fo-node"><div class="fo-t">$U_N(w) = w/w_0$</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-util" transform="translate(516 148)">
+            <rect width="204" height="40" rx="6" ry="6"/>
+            <foreignObject width="204" height="40">
+              <div class="fo-node"><div class="fo-t">$U_A(w) = \sqrt{w/w_0}$</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-eu" transform="translate(80 200)">
+            <rect width="600" height="40" rx="6" ry="6"/>
+            <foreignObject width="600" height="40">
+              <div class="fo-node"><div class="fo-t">$\mathrm{EU}(\alpha) = p_{\text{fill}}\!\cdot\!U(w_1) + (1 - p_{\text{fill}})\!\cdot\!U(w_0)$</div></div>
+            </foreignObject>
+          </g>
+          <g class="n n-eu" transform="translate(140 250)">
+            <rect width="480" height="22" rx="6" ry="6"/>
+            <foreignObject width="480" height="22">
+              <div class="fo-node"><div class="fo-s">$\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$, &nbsp; $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$</div></div>
+            </foreignObject>
+          </g>
+        </svg>
+      </div>
+
+      <div class="arch-defs">
+        <div class="arch-def-card card-ll">
+          <h4>Prior Elicitation</h4>
+          <p class="role">Shared across plans</p>
+          <div class="formula">$$ \text{prior}_t \;=\; \max\!\bigl(0,\; \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)\bigr) $$</div>
+          <div class="formula">$$ b_i \;=\; \delta_i \cdot \beta, \quad \delta_i \in \{-1,\, 0,\, +1\}, \quad \beta = 0.15 $$</div>
+          <div class="formula">$$ \varepsilon \sim \mathcal{U}[-n,\, n], \quad n = 0.03 $$</div>
+          <p class="body">$\mathrm{FV}_t$ is the fundamental value at period $t$ (see Figure 1). $b_i$ is a persistent per-agent bias: $\delta_i$ is the bias direction drawn at birth ($+1$ = optimistic, $-1$ = pessimistic, $0$ = unbiased) and $\beta$ is the bias magnitude. $\varepsilon$ is i.i.d. per-tick noise drawn from a uniform distribution on $[-n, n]$ via the seeded PRNG. When bias and noise are disabled, $\text{prior}_t = \mathrm{FV}_t$ exactly. The result is clamped to $\geq 0$. All three plans start from this prior and update it to $V_i^{\text{post}}$ over the course of a period.</p>
+        </div>
+        <div class="arch-def-card card-ll">
+          <h4>Expected-Utility Scoring</h4>
+          <p class="role">Shared across plans</p>
+          <div class="formula">$$ \mathrm{EU}(\alpha) \;=\; p_{\text{fill}} \cdot U(w_1) \;+\; (1 - p_{\text{fill}}) \cdot U(w_0), \qquad \alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha) $$</div>
+          <div class="formula">$$ U_L(w) = (w/w_0)^2,\qquad U_N(w) = w/w_0,\qquad U_A(w) = \sqrt{w/w_0} $$</div>
+          <p class="body">$\hat{V}_i \equiv V_i^{\text{post}}$ is agent $i$'s subjective valuation — the posterior output of the active plan (see Figure 3). $c_i$ is cash; $q_i$ is share inventory. $w_0 = c_i + q_i \cdot \hat{V}_i$ is current wealth; $w_1 = (c_i \pm p_{\text{order}}) + (q_i \pm 1) \cdot \hat{V}_i$ is wealth after a hypothetical fill at order price $p_{\text{order}}$. For crossing actions (buy@$A_t$ and sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive quotes (bid, ask), $p_{\text{fill}} = 0.30$ (tunable). In Plan I, agent $i$ maximizes EU over the five-element action set $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the best ask and $B_t$ is the best bid on the order book at tick $t$. In Plans II/III the LLM selects directly from $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$. Risk-loving / neutral / averse pick $U_L$, $U_N$, or $U_A$.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ════════════════════════════════════════════════════
+         Figure 3 — Information Aggregation Protocols
+         ════════════════════════════════════════════════════ -->
+    <figure class="arch-figure">
+      <div class="arch-fig-header">
+        <figcaption><span class="fig-num">Figure 3</span> — Information Aggregation Protocols</figcaption>
+        <a class="btn-drawio" data-drawio="arch-revision.drawio" href="#" target="_blank" rel="noopener" title="Edit arch-revision.drawio in draw.io">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+          <span>Edit in draw.io</span>
+        </a>
+      </div>
+      <div class="arch-svg-container arch-diagram" id="arch-fig3">
+        <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Figure 3 — Information aggregation protocols">
+
+          <g class="arch-group g-plan">
+            <rect x="20" y="10" width="720" height="180" rx="10" ry="10"/>
+            <text x="380" y="30" class="g-label">Belief Revision Protocols</text>
+          </g>
+
+          <!-- Three plan cards -->
+          <g class="n n-msg" transform="translate(40 44)">
+            <rect width="224" height="72" rx="6" ry="6"/>
+            <foreignObject width="224" height="72">
+              <div class="fo-node">
+                <div class="fo-t">Plan I · algorithmic</div>
+                <div class="fo-s">$V^{\text{post}} = w \!\cdot\! V^{\text{prior}} + (1\!-\!w)\!\cdot\!\bar{m}$</div>
+                <div class="fo-s">$w = 0.6 + 0.1\,\min(3,k)$</div>
+              </div>
+            </foreignObject>
+          </g>
+          <g class="n n-wang" transform="translate(278 44)">
+            <rect width="224" height="72" rx="6" ry="6"/>
+            <foreignObject width="224" height="72">
+              <div class="fo-node">
+                <div class="fo-t">Plan II · LLM + forms</div>
+                <div class="fo-s">prompt $\supseteq \{U_L, U_N, U_A\}$</div>
+                <div class="fo-s">$\alpha^\star_{i,t} \!\leftarrow\! \text{LLM}(\pi^{\text{II}})$</div>
+              </div>
+            </foreignObject>
+          </g>
+          <g class="n n-wang" transform="translate(516 44)">
+            <rect width="204" height="72" rx="6" ry="6"/>
+            <foreignObject width="204" height="72">
+              <div class="fo-node">
+                <div class="fo-t">Plan III · LLM + label</div>
+                <div class="fo-s">prompt $\supseteq$ risk label only</div>
+                <div class="fo-s">$\alpha^\star_{i,t} \!\leftarrow\! \text{LLM}(\pi^{\text{III}})$</div>
+              </div>
+            </foreignObject>
+          </g>
+
+          <!-- Connectors to trust -->
+          <path class="link" d="M 152 116 L 152 140"/>
+          <path class="link link-wang" d="M 390 116 L 390 140"/>
+          <path class="link link-wang" d="M 618 116 L 618 140"/>
+
+          <!-- Trust EMA -->
+          <g class="n n-trust" transform="translate(140 140)">
+            <rect width="480" height="42" rx="6" ry="6"/>
+            <foreignObject width="480" height="42">
+              <div class="fo-node">
+                <div class="fo-t">Trust EMA &nbsp; $\tau_{r \to s} \!\leftarrow\! (1\!-\!\lambda)\,\tau + \lambda \!\cdot\! \text{closeness}$ &nbsp; $\lambda\!=\!0.30$</div>
+              </div>
+            </foreignObject>
+          </g>
+        </svg>
+      </div>
+
+      <div class="arch-defs">
+        <div class="arch-def-card card-ll">
+          <h4>Plan I — Algorithmic Posterior</h4>
+          <p class="role">Deterministic</p>
+          <div class="formula">$$ V_i^{\text{post}} \;=\; w \cdot V_i^{\text{prior}} \;+\; (1 - w) \cdot \underbrace{\tfrac{1}{|M|}\sum_{m \in M} \hat v_m}_{\bar{m}\;\text{(peer-message mean)}}, \qquad w \;=\; 0.6 + 0.1\,\min(3,\,k_i) $$</div>
+          <div class="formula">$$ \hat v_m \;=\; \max\!\bigl(0,\; V_m \cdot \phi_m\bigr), \qquad \sigma_m \in \{H,\, B,\, D\} $$</div>
+          <div class="formula">$$ \phi_m \;=\; \begin{cases} 1 + \mathcal{U}[-h,\,h] & \sigma_m = H \\[4pt] 1 + \delta_m \cdot \gamma & \sigma_m = B \\[4pt] \kappa^+\,\mathbf{1}_{q_m > q_m^0} \;+\; \kappa^-\,\mathbf{1}_{q_m < q_m^0} \;+\; (1 + \delta_m \cdot \gamma)\,\mathbf{1}_{q_m = q_m^0} & \sigma_m = D \end{cases} $$</div>
+          <div class="formula">$$ h = 0.02, \quad \gamma = 0.10, \quad \kappa^+ = 1.25, \quad \kappa^- = 0.75 $$</div>
+          <p class="body">$V_i^{\text{prior}} = \text{prior}_t$ from Figure 2 (the bias- and noise-adjusted fundamental). $\hat{v}_m$ is the claimed valuation that peer $m$ broadcasts, derived from $m$'s subjective valuation $V_m$ via a distortion multiplier $\phi_m$ determined by $m$'s communication strategy $\sigma_m$: $H$ (truthful) adds small uniform jitter of half-width $h$; $B$ (biased) applies a fixed-sign tilt of magnitude $\gamma$ with direction $\delta_m \in \{-1, 0, +1\}$; $D$ (strategic) overstates by $\kappa^+$ when inventory $q_m$ exceeds initial endowment $q_m^0$ (to inflate price for selling) and understates by $\kappa^-$ when below (to depress price for buying), with a bias-like fallback at $q_m = q_m^0$. $\bar{m}$ averages the $\hat{v}_m$ over the set $M$ of non-self messages received this period. Weight $w$ ramps from $0.60$ to $0.90$ over the first three rounds of experience ($k_i$ starting at $0$, incremented at each round boundary), so novices listen freely and veterans rely on their own prior. If $|M| = 0$, $V_i^{\text{post}} = V_i^{\text{prior}}$ (no blend). No network calls — the run is deterministic under the seeded PRNG.</p>
+        </div>
+        <div class="arch-def-card card-ll">
+          <h4>Pairwise Trust Dynamics</h4>
+          <p class="role">Social learning</p>
+          <div class="formula">$$ \tau_{r \to s} \;\leftarrow\; (1 - \lambda)\, \tau_{r \to s} \;+\; \lambda \cdot \underbrace{\max\!\Bigl(0,\,1 - \tfrac{|\hat v_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr)}_{\text{closeness}_{r,s}}, \quad \lambda = 0.30 $$</div>
+          <p class="body">$\lambda$ is the EMA learning rate (not to be confused with the action variable $\alpha_{i,t}$). Receiver $r$'s trust in sender $s$ is reinforced when $s$'s claimed valuation $\hat{v}_s$ (see Plan I card) tracks the period's volume-weighted average price $\mathrm{VWAP}_t = \sum_j p_j q_j / \sum_j q_j$, where $p_j$ and $q_j$ are the price and quantity of trade $j$ in period $t$. Closeness is clipped to $[0, 1]$; $\tau$ is initialized at $0.5$ (neutral) with self-trust fixed at $1.0$. Logged on every plan, read by Plan II/III prompts for context.</p>
+        </div>
+        <div class="arch-def-card card-wang">
+          <h4>Plan II — LLM Posterior with Utility Forms</h4>
+          <p class="role">LLM-based</p>
+          <div class="formula">$$ \alpha^\star_{i,t} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \supset \{\,U_L(w) = (w/w_0)^2,\; U_N(w) = w/w_0,\; U_A(w) = \sqrt{w/w_0}\,\} $$</div>
+          <div class="formula">$$ \alpha^\star_{i,t} \in \{\text{BUY\_NOW},\,\text{SELL\_NOW},\,\text{BID\_1},\,\text{BID\_3},\,\text{ASK\_1},\,\text{ASK\_3},\,\text{HOLD}\} $$</div>
+          <p class="body">$\pi_i^{\text{II}}$ is a structured prompt injected with: market rules ($T$, dividend structure), the agent's private state ($c_i$, $q_i$, $\hat{V}_i$, $w_0 = c_i + q_i \cdot \hat{V}_i$), the explicit utility formula for the agent's risk type ($U_L$, $U_N$, or $U_A$ with $w_0$ as the normalization base), current book state (best bid/ask), peer trust scores $\tau_{r \to s}$, and received messages $\{\hat{v}_m\}$. The LLM returns a discrete action $\alpha^\star_{i,t}$ from the seven-element set; the engine translates it to an order at the current book price. Fire-and-forget: a failed or invalid action falls back to the Plan I EU evaluation.</p>
+        </div>
+        <div class="arch-def-card card-wang">
+          <h4>Plan III — LLM Posterior with Risk Label</h4>
+          <p class="role">LLM-based</p>
+          <div class="formula">$$ \alpha^\star_{i,t} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{III}}\bigr), \qquad \pi_i^{\text{III}} \supset \{\text{risk-loving} \mid \text{risk-neutral} \mid \text{risk-averse}\} $$</div>
+          <p class="body">Identical wiring to Plan II but the prompt omits the closed-form $U_L / U_N / U_A$ expressions and only names the risk-preference category. Isolates the effect of giving the LLM an explicit functional form versus just a label. Same seven-action output set.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ════════════════════════════════════════════════════
+         Figure 4 — Price Discovery and Market-Quality Diagnostics
+         ════════════════════════════════════════════════════ -->
+    <figure class="arch-figure">
+      <div class="arch-fig-header">
+        <figcaption><span class="fig-num">Figure 4</span> — Price Discovery and Market-Quality Diagnostics</figcaption>
+        <a class="btn-drawio" data-drawio="arch-microstructure.drawio" href="#" target="_blank" rel="noopener" title="Edit arch-microstructure.drawio in draw.io">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+          <span>Edit in draw.io</span>
+        </a>
+      </div>
+      <div class="arch-svg-container arch-diagram" id="arch-fig4">
+        <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Figure 4 — Price discovery and market-quality diagnostics">
+
+          <g class="arch-group g-market">
+            <rect x="20" y="10" width="720" height="180" rx="10" ry="10"/>
+            <text x="380" y="30" class="g-label">Continuous Double Auction</text>
+          </g>
+
+          <g class="n n-book" transform="translate(30 40)">
+            <rect width="700" height="40" rx="6" ry="6"/>
+            <foreignObject width="700" height="40">
+              <div class="fo-node">
+                <div class="fo-t">Order book (price–time priority) &nbsp; $\text{bid} \geq \text{ask} \Rightarrow$ trade at resting price</div>
+              </div>
+            </foreignObject>
+          </g>
+
+          <path class="link" d="M 380 80 L 380 100"/>
+
+          <g class="n n-metric" transform="translate(30 100)">
+            <rect width="166" height="68" rx="6" ry="6"/>
+            <foreignObject width="166" height="68">
+              <div class="fo-node">
+                <div class="fo-t">Haessel $R^2$</div>
+                <div class="fo-s">fit of $\bar{p}_t$ to $\mathrm{FV}_t$</div>
+              </div>
+            </foreignObject>
+          </g>
+          <g class="n n-metric" transform="translate(208 100)">
+            <rect width="166" height="68" rx="6" ry="6"/>
+            <foreignObject width="166" height="68">
+              <div class="fo-node">
+                <div class="fo-t">Norm. deviation</div>
+                <div class="fo-s">$\Sigma|p_j\!-\!\mathrm{FV}_{t(j)}|\!\cdot\!q_j\,/\,Q$</div>
+              </div>
+            </foreignObject>
+          </g>
+          <g class="n n-metric" transform="translate(386 100)">
+            <rect width="166" height="68" rx="6" ry="6"/>
+            <foreignObject width="166" height="68">
+              <div class="fo-node">
+                <div class="fo-t">Amplitude</div>
+                <div class="fo-s">peak–trough / $\mathrm{FV}_1$</div>
+              </div>
+            </foreignObject>
+          </g>
+          <g class="n n-metric" transform="translate(564 100)">
+            <rect width="166" height="68" rx="6" ry="6"/>
+            <foreignObject width="166" height="68">
+              <div class="fo-node">
+                <div class="fo-t">TO · AE</div>
+                <div class="fo-s">$\Sigma q_j/Q$ · $\sum V_i q_i\,/\,V_{\max} Q$</div>
+              </div>
+            </foreignObject>
+          </g>
+        </svg>
+      </div>
+
+      <div class="arch-defs">
+        <div class="arch-def-card card-metric">
+          <h4>Mispricing Measures</h4>
+          <p class="role">Diagnostic</p>
+          <div class="formula">$$ R^2_{\text{Haessel}} \;=\; 1 - \frac{\sum_t (\bar p_t - \mathrm{FV}_t)^2}{\sum_t (\bar p_t - \bar{\bar{p}})^2}, \qquad \mathrm{ND} = \frac{\sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j}{Q} $$</div>
+          <p class="body">$\bar{p}_t$ is the mean trade price in global period $t$ (averaged over all trades in that period); $\bar{\bar{p}}$ is the grand mean of $\bar{p}_t$ across all traded periods; $\mathrm{FV}_t$ is the fundamental value at period $t$. Haessel $R^2$ measures how closely per-period mean prices fit the fundamental staircase — it can be negative if mispricing exceeds the sample variance of $\bar{p}_t$. ND sums the absolute deviation $|p_j - \mathrm{FV}_{t(j)}|$ of each individual trade $j$ weighted by its quantity $q_j$, divided by total shares outstanding $Q = \sum_i q_i$; here $t(j)$ is the period in which trade $j$ occurred.</p>
+        </div>
+        <div class="arch-def-card card-metric">
+          <h4>Volume and Efficiency Measures</h4>
+          <p class="role">Diagnostic</p>
+          <div class="formula">$$ A \;=\; \frac{\max_t (\bar p_t - \mathrm{FV}_t) - \min_t (\bar p_t - \mathrm{FV}_t)}{\mathrm{FV}_1}, \qquad \mathrm{TO} \;=\; \frac{\sum_j q_j}{Q}, \qquad \mathrm{AE} \;=\; \frac{\sum_i \hat{V}_i \cdot q_i}{\hat{V}_{\max} \cdot Q} $$</div>
+          <p class="body">$A$ (amplitude) measures the peak-to-trough excursion of the mean-price residual $\bar{p}_t - \mathrm{FV}_t$, normalized by the initial fundamental $\mathrm{FV}_1 = \mathbb{E}[d] \cdot T = 100$¢. $\mathrm{TO}$ (turnover) sums the quantity $q_j$ across all trades $j$ and divides by total shares outstanding $Q = \sum_i q_i$ (conserved under double-auction trades); a value of $1.0$ means every share changed hands once. $\mathrm{AE}$ (allocative efficiency) is the ratio of realized to optimal aggregate valuation: $\hat{V}_i$ is agent $i$'s subjective valuation ($= V_i^{\text{post}}$), $q_i$ is agent $i$'s current inventory, and $\hat{V}_{\max} = \max_i \hat{V}_i$; the optimal allocation assigns all $Q$ shares to the highest-valuation agent. All three are reported in the Market-Quality Statistics panel and the batch results table.</p>
+        </div>
+      </div>
+    </figure>
+
+    <!-- ════════════════════════════════════════════════════
+         Figure 5 — Sample Prompt (Round-3 Experienced LLM Trader)
+         ════════════════════════════════════════════════════ -->
+    <figure class="arch-figure">
+      <div class="arch-fig-header">
+        <figcaption><span class="fig-num">Figure 5</span> — Sample Prompt · Round-3 Experienced LLM Trader</figcaption>
+      </div>
+      <p class="arch-desc">Plan II/III do not tell the LLM its "experience level" as a number. Instead they inject the actual lived record — the price paths, peaks, and end-of-round cash from every prior round the agent played through — so the LLM infers experience the way a human subject does, from memory of what happened. The sample below is the exact system + user prompt generated by <code>AI.getPlanBeliefs</code> for <code>agent_2</code> (risk-neutral, Plan II) at round 3, period 3, with <code>roundsPlayed = 2</code>. A fresh R4-⅓/R4-⅔ replacement (<code>roundsPlayed = 0</code>) receives the same template, but the history block is replaced with a single line stating it is new to this market and has no memory of prior rounds — the LLM reasons about its own naivety from that absence.</p>
+
+      <div class="arch-defs">
+        <div class="arch-def-card card-wang">
+          <h4>System Prompt · $\pi^{\mathrm{II}}_{\text{sys}}$</h4>
+          <p class="role">Identical across agents, plans, and ticks</p>
+          <pre class="prompt-sample">You are a trader in an experimental double auction asset market. Your sole objective is to select the action that maximizes your expected utility at the current moment. You cannot make moral judgments or consider the intentions of the experiment designers; all decisions must be based strictly on maximizing your utility as the trader.
+
+Important Rules:
+
+1. You must select exactly one action from the given set of actions.
+2. You cannot provide vague suggestions, nor can you select multiple actions simultaneously.
+3. You cannot say "depends on" or "insufficient information." You must make the best decision based on the given information.
+4. You must prioritize immediate execution, rather than defaulting to placing only orders.
+5. You can accept the current best ask (buy immediately) or accept the current best bid (sell immediately).
+6. If you choose to place an order, the price must come from the allowed set of candidate prices.
+7. Your output must strictly conform to the specified format.</pre>
+        </div>
+
+        <div class="arch-def-card card-wang">
+          <h4>User Prompt · $\pi^{\mathrm{II}}_{\text{usr}}(\text{agent}_2)$</h4>
+          <p class="role">Round 3 · period 3 · <code>roundsPlayed = 2</code> · risk-neutral · cash 965¢ · inventory 4</p>
+          <pre class="prompt-sample">You are a trader in the market, agent_2.
+
+【Your Type】
+- Risk Preference Type: Risk neutral
+  Makes decisions based on expected returns
+- Your utility function: U_N(w) = w / w0  (linear, EV-indifferent)
+  w0 (initial wealth) = 1300 cents.
+
+【Your Past Experience in This Market】
+You have already traded 2 rounds in this market. The records below are the price paths you observed and the payoff you earned. Use them to judge how seriously to weight fundamental value vs. recent prices and short-term trends — your own memory is the best guide.
+
+Round 1 (your first in this market):
+  - FV path (p1..p10):    100 / 90 / 80 / 70 / 60 / 50 / 40 / 30 / 20 / 10
+  - Last-trade price path:        110 / 145 / 170 / 185 / 165 / 130 / 90 / 55 / 28 / 12
+  - Peak price: 185 at p4 (FV then = 70, deviation +164%)
+  - Round-end last price: 12 (FV at p10 = 10; gap +2)
+  - Your end-of-round cash: 1480¢  (round-start mark-to-market wealth = 1300¢ = cash + shares × FV₁)
+
+Round 2 (most recent):
+  - FV path (p1..p10):    100 / 90 / 80 / 70 / 60 / 50 / 40 / 30 / 20 / 10
+  - Last-trade price path:        102 / 115 / 125 / 118 / 95 / 72 / 50 / 32 / 18 / 10
+  - Peak price: 125 at p3 (FV then = 80, deviation +56%)
+  - Round-end last price: 10 (FV at p10 = 10; gap +0)
+  - Your end-of-round cash: 1365¢  (round-start mark-to-market wealth = 1300¢ = cash + shares × FV₁)
+
+【Market Rules】
+1. This is a 10-period asset market.
+2. Each asset pays a dividend of 0 or 20 in each remaining period, with a 50% probability of each.
+3. Therefore, the expected dividend for each remaining period is 10.
+4. If the current remaining period is k, then the fundamental value = 10 × k.
+5. All traders know how this fundamental value is calculated.
+6. Double Auction Rules:
+   - You can buy the lowest ask immediately.
+   - You can sell the highest bid immediately.
+   - You can submit a new bid.
+   - You can submit a new ask.
+   - You can also choose not to trade.
+7. If you buy the current ask immediately, the transaction will be executed instantly at the lowest ask price.
+8. If you sell the current bid immediately, the transaction will be executed instantly at the highest bid price.
+9. The last price is only updated when a transaction occurs.
+
+【Your Status】
+- Current Cash: 965
+- Current Asset Holdings: 4
+
+【Current Market Status】
+- Current Period: 3
+- Current Remaining Periods k: 8
+- Current Fundamental Value (FV): 80
+- Last Price: 95
+- Highest Bid: 88
+- Lowest Ask: 94
+- Previous Reference Price: 95
+- This round so far (last trade per period): p1=98 (FV 100), p2=95 (FV 90)
+
+【Your Decision-Making Principles】
+You want to maximize the following intuitive utilities:
+1. The higher the wealth, the better;
+2. You evaluate expected returns linearly;
+3. Buying at a price lower than the last traded price increases utility; buying at a price higher than the last traded price decreases utility;
+4. Selling at a price higher than the last traded price increases utility; selling at a price lower than the last traded price decreases utility;
+5. Holding too many positions increases inventory risk;
+
+【Additional Requirements】
+1. You cannot mechanically favor holding.
+2. If the utility of immediate execution is similar to holding, you should prioritize actions that facilitate the trade.
+3. You must consider "execution opportunities" valuable because not executing means you cannot improve your position.
+4. When you hold a lot of assets, you should seriously consider selling; when you hold a lot of cash and fewer assets, you should seriously consider buying.
+5. Towards the later stages, you should focus more on fundamental value than short-term resale opportunities.
+
+【Role-Specific Guidance】
+- As a risk-neutral trader, you should focus more on expected returns.
+
+【Peer Messages from Last Period】
+- agent 1: claimed value 85 cents
+- agent 3: claimed value 78 cents
+- agent 4: claimed value 92 cents
+- agent 5: claimed value 80 cents
+- agent 6: claimed value 74 cents
+
+【You must choose one of the following actions】
+1. BUY_NOW: Immediately buy 1 unit at the current lowest ask price (94).
+2. SELL_NOW: Immediately sell 1 unit at the current highest bid price (88).
+3. BID_1: Submit bid = best_bid + 1 = 89.
+4. BID_3: Submit bid = best_bid + 3 = 91.
+5. ASK_1: Submit ask = best_ask - 1 = 93.
+6. ASK_3: Submit ask = best_ask - 3 = 91.
+7. HOLD: Do not trade.
+
+【Your Task】
+Please briefly compare the available actions to determine which is most advantageous to you:
+- Buy immediately
+- Sell immediately
+- Place a more aggressive bid
+- Place a more aggressive ask
+- Do not trade
+Then output only one final action.
+
+【Strict Output Format】
+Reason: &lt;Explain in 3-6 sentences why this action maximizes your utility&gt;
+Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
+        </div>
+
+        <div class="arch-def-card card-ll">
+          <h4>How experience changes the prompt</h4>
+          <p class="role">Difference across <code>roundsPlayed</code></p>
+          <p class="body">The history block scales with <code>roundsPlayed</code> — one entry per round the agent has lived through. An agent with <code>roundsPlayed = 3</code> at the start of round 4 sees three blocks (rounds 1, 2, 3). A fresh R4 replacement (<code>roundsPlayed = 0</code>) sees no history block at all; in its place the prompt contains a single declarative sentence: <em>"This is your first round in this market. You have never traded this asset before and have no memory of prior rounds — you only see the rules, the fundamental value, and whatever trading has happened so far in the current round."</em> Nothing else changes. The rule-based experience labels that used to appear in 【Your Type】 ("Experience level: N"), 【Your Decision-Making Principles】 (principle #6), and 【Role-Specific Guidance】 ("As a highly experienced trader ...") are gone — the LLM decides how to weight fundamentals versus recent prices from its own observed history, not from an instruction telling it to do so. Plan III differs from Plan II only by omitting the explicit $U_L / U_N / U_A$ formula; the history block and all other sections are identical.</p>
+        </div>
+      </div>
+    </figure>
+
+  </div>
+</section>
+
+
+
+<!--
+  Glossary tab — definitions of every abbreviation, symbol, figure,
+  and source paper used in the simulator. Two tables (abbreviations
+  and mathematical notation) plus a list of plot descriptions plus a
+  source-papers list. Rendered via KaTeX in main.js._renderMath().
+-->
+<section class="tab-pane" id="tab-glossary">
+  <div class="glossary-wrap">
+    <h2>Glossary &amp; Reference</h2>
+
+    <div class="gloss-section">
+      <h3>Abbreviations &amp; indices</h3>
+      <table class="gloss-table">
+        <thead><tr><th>Term</th><th>Expansion</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="term">Plan I</td><td>Algorithmic posterior</td><td>Deterministic baseline — $V_i^{\text{post}} = w\cdot V_i^{\text{prior}} + (1-w)\cdot\bar{m}$ with $w = 0.6 + 0.1\,\min(3, k_i)$.</td></tr>
+          <tr><td class="term">Plan II</td><td>LLM posterior · utility forms</td><td>One chat completion per Utility agent per period. LLM returns a discrete action from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
+          <tr><td class="term">Plan III</td><td>LLM posterior · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied. Same seven-action output set.</td></tr>
+          <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Source paper for the shared market substrate: $T$, $\mathbb{E}[d]$, $\mathrm{FV}_t$, and the four-round session loop.</td></tr>
+          <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the sole agent class ($N = 6$). Per-period belief update is what Plans I, II, and III compare.</td></tr>
+          <tr><td class="term">FV</td><td>Fundamental value</td><td>$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$ — risk-neutral value at the start of period $t$.</td></tr>
+          <tr><td class="term">EU</td><td>Expected utility</td><td>$\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1-p_{\text{fill}})\cdot U(w_0)$ — the Utility agent's scoring functional over $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$.</td></tr>
+          <tr><td class="term">VWAP</td><td>Volume-weighted average price</td><td>Per-period average trade price weighted by quantity; baseline for the trust EMA update.</td></tr>
+          <tr><td class="term">ND</td><td>Normalized deviation</td><td>Total absolute mispricing: $\mathrm{ND} = \sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j \,/\, Q$, where $j$ indexes trades, $q_j$ is trade quantity, and $Q$ is total shares outstanding.</td></tr>
+          <tr><td class="term">R²</td><td>Haessel R²</td><td>Coefficient of determination of mean price against fundamental value.</td></tr>
+          <tr><td class="term">TO</td><td>Turnover</td><td>Total shares traded divided by total shares outstanding — reports speculative intensity.</td></tr>
+          <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized aggregate valuation divided by the theoretical maximum: $\mathrm{AE} = \sum_i \hat{V}_i q_i \,/\, (\hat{V}_{\max} \cdot Q)$, where $\hat{V}_i = V_i^{\text{post}}$.</td></tr>
+          <tr><td class="term">Session</td><td>10-session DLM batch</td><td>One click of Start runs 10 sessions (5 &times; first treatment + 5 &times; second treatment). Each session is a complete $R = 4$ round game; data is collected per round with labels $\texttt{R\{r\}\_S\{s\}}$.</td></tr>
+          <tr><td class="term">R<em>r</em>_S<em>s</em></td><td>Round–session label</td><td>Identifies Round $r$ of Session $s$ in the batch results table. Example: R3_S7 = round 3 of session 7.</td></tr>
+          <tr><td class="term">T2 / T4</td><td>DLM treatment sizes</td><td>T2 (R4-&#8532;): 2 agents replaced in R4, 4 veterans remain. T4 (R4-&#8531;): 4 replaced, 2 veterans remain. First 5 sessions use the selected treatment, last 5 use the other.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gloss-section">
+      <h3>Mathematical notation</h3>
+      <table class="gloss-table">
+        <thead><tr><th>Symbol</th><th>Definition</th><th>Where it appears</th></tr></thead>
+        <tbody>
+          <tr><td class="term math">$\mathrm{FV}_t$</td><td>Fundamental value at the start of period $t$. $\mathrm{FV}_t = \mathbb{E}[d]\cdot(T - t + 1)$, with $\mathbb{E}[d] = \tfrac{1}{2}(0) + \tfrac{1}{2}(20) = 10$¢ and $T = 10$. Yields a staircase from $\mathrm{FV}_1 = 100$¢ to $\mathrm{FV}_{10} = 10$¢, resetting at every round boundary.</td><td>Shared substrate — drives every agent's prior (Figures 1–4)</td></tr>
+          <tr><td class="term math">$\text{prior}_t$</td><td>Agent $i$'s pre-update valuation at period $t$. $\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$, clamped to $\geq 0$. Identical across all three plans.</td><td>Prior Formation stage (Figures 1–2)</td></tr>
+          <tr><td class="term math">$b_i = \delta_i \cdot \beta$</td><td>Persistent per-agent valuation bias. $\delta_i \in \{-1, 0, +1\}$ is the bias direction drawn at birth (pessimistic, unbiased, optimistic) and $\beta = 0.15$ is the bias magnitude. Enters the prior as $\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon)$.</td><td>Prior formation (Figure 2)</td></tr>
+          <tr><td class="term math">$\varepsilon \sim \mathcal{U}[-n, n]$</td><td>Per-tick i.i.d. valuation noise, $n = 0.03$. Drawn fresh each decision via the seeded PRNG.</td><td>Prior formation — jitter term in $\text{prior}_t$ (Figure 2)</td></tr>
+          <tr><td class="term math">$k_i$</td><td>Agent $i$'s experience counter. Starts at $0$; incremented by $1$ at every round boundary. Controls the Plan I blend weight: $w = 0.6 + 0.1\,\min(3, k_i)$, so $w \in \{0.6, 0.7, 0.8, 0.9\}$ for $k_i = 0, 1, 2, \geq 3$.</td><td>Plan I posterior weight; DLM experience channel (Figure 3)</td></tr>
+          <tr><td class="term math">$\hat{v}_m$</td><td>Claimed valuation reported by peer agent $m$. Computed as $\hat{v}_m = \max(0,\, V_m \cdot \phi_m)$ where $\phi_m$ is a distortion multiplier determined by $m$'s communication strategy $\sigma_m \in \{H, B, D\}$ (see Figure 3). The peer-message mean is $\bar{m} = \tfrac{1}{|M|}\sum_{m \in M} \hat{v}_m$ where $M$ is the set of non-self messages received this period.</td><td>Plan I posterior — blended with prior via weight $w$ (Figure 3)</td></tr>
+          <tr><td class="term math">$\sigma_m \in \{H, B, D\}$</td><td>Communication strategy of agent $m$: $H$ = truthful (small uniform jitter), $B$ = biased (fixed-sign tilt), $D$ = strategic (inventory-dependent over/understatement). Assigned at birth and persistent across rounds.</td><td>Distortion multiplier $\phi_m$ in $\hat{v}_m$ (Figure 3)</td></tr>
+          <tr><td class="term math">$\phi_m$</td><td>Communication distortion multiplier. $\phi_m = 1 + \mathcal{U}[-h, h]$ if $\sigma_m = H$; $\phi_m = 1 + \delta_m \gamma$ if $\sigma_m = B$; $\phi_m = \kappa^+$ or $\kappa^-$ if $\sigma_m = D$ (depending on $q_m$ vs $q_m^0$). Parameters: $h = 0.02$, $\gamma = 0.10$, $\kappa^+ = 1.25$, $\kappa^- = 0.75$.</td><td>$\hat{v}_m = \max(0,\, V_m \cdot \phi_m)$ (Figure 3)</td></tr>
+          <tr><td class="term math">$V_i^{\text{post}}$</td><td>Agent $i$'s period-end valuation — the output of the active plan. Plan I (algorithmic): $V_i^{\text{post}} = w \cdot V_i^{\text{prior}} + (1 - w) \cdot \bar{m}$, or $V_i^{\text{prior}}$ if no messages. Plans II/III: set directly by the LLM's chosen action.</td><td>Becomes next period's prior in all three plans (Figure 3)</td></tr>
+          <tr><td class="term math">$U_L, U_N, U_A$</td><td>Risk-typed utility families. $U_L(w) = (w/w_0)^2$ (risk-loving, strictly convex); $U_N(w) = w/w_0$ (risk-neutral, linear); $U_A(w) = \sqrt{w/w_0}$ (risk-averse, strictly concave). All normalized by initial wealth $w_0$.</td><td>EU scoring; formulas appear explicitly in Plan II prompts (Figures 2–3)</td></tr>
+          <tr><td class="term math">$w_0, w_1$</td><td>Wealth states for EU evaluation. $w_0 = c_i + q_i \cdot \hat{V}_i$ (wealth if no trade); $w_1 = (c_i \pm p_{\text{order}}) + (q_i \pm 1) \cdot \hat{V}_i$ (wealth if the order fills at price $p_{\text{order}}$), where $c_i$ is cash, $q_i$ is inventory, and $\hat{V}_i \equiv V_i^{\text{post}}$ is the agent's subjective valuation.</td><td>EU scoring — $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$ (Figure 2)</td></tr>
+          <tr><td class="term math">$p_{\text{fill}} = 0.30$</td><td>Assumed fill probability for a non-crossing (passive) quote. Used in the EU functional: $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$. For crossing actions (buy@$A_t$, sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive actions (bid, ask), $p_{\text{fill}} = 0.30$ (tunable).</td><td>EU scoring — $\alpha^\star_{i,t}$ action evaluation (Figure 2)</td></tr>
+          <tr><td class="term math">$\alpha^\star_{i,t}$</td><td>Optimal action for agent $i$ at tick $t$. $\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$ over the five-element set $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the current best ask and $B_t$ is the current best bid. buy@$A_t$ crosses the book at the resting ask (deterministic fill, $p_{\text{fill}} = 1$); sell@$B_t$ lifts the resting bid (deterministic fill); bid and ask post passive quotes ($p_{\text{fill}} = 0.30$). Plans II/III use a seven-element LLM action set: $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$.</td><td>Action selection — output of EU maximization (Figures 2–3)</td></tr>
+          <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$. Updated by exponential moving average: $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau_{r \to s} + \lambda \cdot \text{closeness}_{r,s}$, where $\lambda = 0.30$ is the EMA learning rate and $\text{closeness} = \max\!\bigl(0,\, 1 - |\hat{v}_s - \text{VWAP}_t|\,/\,\text{VWAP}_t\bigr)$. Initialized at $0.5$; self-trust fixed at $1.0$.</td><td>Messaging diagnostic; context for Plan II/III prompts (Figure 3)</td></tr>
+          <tr><td class="term math">$\pi_i^{\text{II}}, \pi_i^{\text{III}}$</td><td>Structured LLM prompts for Plans II and III. $\pi^{\text{II}}$ includes market rules, agent state, and the explicit utility formula $U_L/U_N/U_A$ for the agent's risk type. $\pi^{\text{III}}$ omits the formula and supplies only the risk-preference label.</td><td>LLM posterior — input to $\alpha^\star_{i,t} \leftarrow \text{LLM}(\pi_i)$ (Figure 3)</td></tr>
+          <tr><td class="term math">$Q$</td><td>Total shares outstanding, $Q = \sum_i q_i$, conserved under double-auction trades (shares transfer, never created or destroyed).</td><td>Normalized deviation $\mathrm{ND}$, turnover $\mathrm{TO}$ (Figure 4)</td></tr>
+          <tr><td class="term math">$\bar{p}_t$</td><td>Mean trade price in global period $t$. $\bar{p}_t = \sum_{j \in \mathcal{T}_t} p_j \,/\, |\mathcal{T}_t|$ where $\mathcal{T}_t$ is the set of trades in period $t$. Used as the basis for Haessel $R^2$ and amplitude.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$R^2_{\text{Haessel}}$</td><td>Haessel (1978) coefficient of determination. $R^2 = 1 - \sum_t (\bar{p}_t - \mathrm{FV}_t)^2 \,/\, \sum_t (\bar{p}_t - \overline{\bar{p}})^2$. Measures how closely per-period mean prices fit the fundamental staircase; can be negative if mispricing exceeds sample variance.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$\mathrm{ND}$</td><td>Normalized absolute price deviation. $\mathrm{ND} = \sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j \,/\, Q$, summing over all trades $j$ weighted by quantity, divided by total shares outstanding.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$A$</td><td>Price amplitude. $A = \bigl(\max_t (\bar{p}_t - \mathrm{FV}_t) - \min_t (\bar{p}_t - \mathrm{FV}_t)\bigr) \,/\, \mathrm{FV}_1$. Peak-to-trough excursion of the mean-price residual, normalized by the initial fundamental.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$\mathrm{TO}$</td><td>Turnover. $\mathrm{TO} = \sum_j q_j \,/\, Q$ — total shares traded (summing quantity $q_j$ over all trades $j$) divided by total shares outstanding $Q$. A value of $1.0$ means every share changed hands once.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
+          <tr><td class="term math">$\rho_t$</td><td>Price-to-fundamental ratio. $\rho_t = p_t \,/\, \mathrm{FV}_t$ (Lopez-Lira 2025), where $p_t$ is the most recent trade price at tick $t$. Values $> 1$ indicate overpricing; persistent $\rho_t \gg 1$ signals a bubble.</td><td>Market-quality diagnostics (Table 1)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gloss-section">
+      <h3>Figures</h3>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--amber);">1</div>
+        <div class="plot-info"><h4>Transaction Price Trajectory vs Fundamental Value</h4><p>Tick-level price plotted against the deterministic step function $\mathrm{FV}_t$. Persistent excursions above the staircase mark the bubble; the final-period collapse is the crash.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--red);">2</div>
+        <div class="plot-info"><h4>Mispricing Magnitude</h4><p>Absolute departure $|p_t - \mathrm{FV}_t|$ filled as a red area; equivalent to Lopez-Lira's price-to-fundamental ratio $\rho_t$.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--green);">3</div>
+        <div class="plot-info"><h4>Trade Volume per Period</h4><p>Bar chart of per-period share quantity exchanged. A volume peak in the inflation phase followed by a cliff near $T$ is the SSW signature.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--blue);">4</div>
+        <div class="plot-info"><h4>Transaction Density Heatmap</h4><p>Two-dimensional trade histogram over (price, period). Warm cells concentrate liquidity; compared against the $\mathrm{FV}_t$ staircase reveals rational vs speculative regimes.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--purple);">5</div>
+        <div class="plot-info"><h4>Agent Action Timeline</h4><p>One row per agent, one cell per decision. Encodes {bid, ask, hold} and whether the submitted order was filled on the same tick.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--teal);">6</div>
+        <div class="plot-info"><h4>Subjective Valuation · Per agent</h4><p>Each Utility agent's period-end belief $V_i^{\text{post}}$ — the same trace regardless of which plan produced it, so trajectories can be compared across Plans I/II/III.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--pink);">7</div>
+        <div class="plot-info"><h4>Pairwise Trust Matrix</h4><p>Heatmap of $\tau_{r \to s}$ on $[0, 1]$ with the diagonal masked. Warm columns identify agents whose claims the population finds credible.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--fg-2);">T1</div>
+        <div class="plot-info"><h4>Market-Quality Statistics (Table 1)</h4><p>Live session metrics: Haessel $R^2$, normalized price deviations, amplitude, turnover, allocative efficiency, welfare, and deception statistics. Updates every render tick.</p></div>
+      </div>
+      <div class="plot-desc">
+        <div class="plot-icon" style="background:var(--fg-2);">T2</div>
+        <div class="plot-info"><h4>10-Session Batch Results (Table 2)</h4><p>Per-round market-quality metrics across the 10-session DLM batch. Each row is labelled $\texttt{R\{r\}\_S\{s\}}$ with mean deviation, turnover, trade count, volume, and aggregate payoff. Per-treatment aggregates summarise T2 vs T4 performance.</p></div>
+      </div>
+    </div>
+
+    <div class="gloss-section">
+      <h3>Source papers</h3>
+      <table class="gloss-table">
+        <thead><tr><th>Tag</th><th>Citation</th><th>Role in this simulator</th></tr></thead>
+        <tbody>
+          <tr><td class="term">DLM 2005</td><td>Dufwenberg, Lindqvist &amp; Moore, <em>Bubbles and Experience: An Experiment</em>, AER 95(5), 1731–1737</td><td>Market substrate — asset life, dividend shape, $\mathrm{FV}_t$, session loop</td></tr>
+          <tr><td class="term">LL 2025</td><td>Lopez-Lira, <em>AI-Agent Expected-Utility Market Makers</em> (working paper)</td><td>Utility agent, EU scoring, risk functionals, trust EMA</td></tr>
+          <tr><td class="term">SSW 1988</td><td>Smith, Suchanek &amp; Williams, <em>Bubbles, Crashes and Endogenous Expectations in Experimental Spot Asset Markets</em>, Econometrica 56(5)</td><td>Canonical experimental-bubble design; the asset-life and dividend structure that DLM 2005 inherits</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!--
+  Slides tab — one responsive flex viewport with N hidden slides; the
+  active slide has `.slide.active` set by App._syncSlide(). Prev/next
+  buttons, a counter, fullscreen, and reading-mode for print. Page
+  size is intentionally responsive (no fixed 16:9 frame) so the
+  viewport adapts to the host window; fullscreen just bumps padding.
+-->
+<section class="tab-pane" id="tab-slides">
+  <div class="slides-wrap">
+    <div class="slides-toolbar">
+      <span class="slides-counter"><span id="slide-cur">1</span> / <span id="slide-tot">14</span></span>
+      <div class="slides-nav">
+        <button class="slides-btn" id="slide-prev" title="Previous slide (←)">←</button>
+        <button class="slides-btn" id="slide-next" title="Next slide (→)">→</button>
+        <button class="slides-btn" id="slide-fs"   title="Toggle fullscreen (F)">⛶</button>
+        <button class="slides-btn" id="slide-read" title="Reading / print mode">≡</button>
+      </div>
+    </div>
+
+    <div class="slides-viewport" id="slides-viewport">
+
+      <!-- ======== Slide 1 — Title ======== -->
+      <div class="slide active" data-slide="1">
+        <div class="slide-body slide-center">
+          <h1 class="slide-title">AI-Agent Prior Elicitation in Experimental Asset Markets</h1>
+          <p class="slide-subtitle">Algorithmic, LLM-Augmented, and Label-Only Belief Formation in a Continuous Double Auction</p>
+          <div class="slide-env-row">
+            <span class="slide-env-badge slide-dlm">Plan I · Algorithmic</span>
+            <span class="slide-env-badge slide-ll">Plan II · LLM + Utility Forms</span>
+            <span class="slide-env-badge slide-wang">Plan III · LLM + Risk Label</span>
+          </div>
+          <p class="slide-note-sm">Browser-based experimental platform · Reproducible via seeded PRNG · Open-source</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 2 — Motivation ======== -->
+      <div class="slide" data-slide="2">
+        <div class="slide-body">
+          <h2 class="slide-heading">Motivation</h2>
+          <p class="slide-text">Asset price bubbles are among the most robust phenomena in experimental economics. Smith, Suchanek &amp; Williams (1988) demonstrated that even under common knowledge of fundamentals, laboratory markets consistently produce price trajectories that deviate from risk-neutral fundamental value. Dufwenberg, Lindqvist &amp; Moore (2005) showed that experience — repeated participation in the same market structure — is a powerful bubble-suppressing channel.</p>
+          <p class="slide-text">Two developments motivate this project: (i) the emergence of large language models as plausible artificial economic agents (Horton, 2023; Brand et al., 2023), and (ii) the open question of whether LLM-driven belief formation reproduces, amplifies, or dampens the bubble dynamics that arise under algorithmic updating rules.</p>
+          <div class="slide-formula-card">$$ \underbrace{\text{SSW (1988)}}_{\text{bubbles exist}} \;\longrightarrow\; \underbrace{\text{DLM (2005)}}_{\text{experience kills bubbles}} \;\longrightarrow\; \underbrace{\text{This paper}}_{\text{LLM belief update}\,\overset{?}{=}\,\text{algorithmic}} $$</div>
+          <p class="slide-note-sm">SSW: AER 78(5); DLM: AER 95(5), 1731–1737; Horton: arXiv 2301.07543; Brand et al.: NBER w31122</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 3 — Literature & Gap ======== -->
+      <div class="slide" data-slide="3">
+        <div class="slide-body">
+          <h2 class="slide-heading">Literature &amp; positioning</h2>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Experimental asset markets</h4>
+              <p class="slide-sm">Smith, Suchanek &amp; Williams (1988) — canonical bubble design</p>
+              <p class="slide-sm">Dufwenberg, Lindqvist &amp; Moore (2005) — experience effect, 4-round session</p>
+              <p class="slide-sm">Hussam, Porter &amp; Smith (2008) — bubble persistence under parameter shocks</p>
+              <p class="slide-sm">Haruvy, Lahav &amp; Noussair (2007) — expectation formation and price dynamics</p>
+            </div>
+            <div class="slide-card">
+              <h4>LLMs as economic agents</h4>
+              <p class="slide-sm">Horton (2023) — LLMs as simulated economic agents (<em>homo silicus</em>)</p>
+              <p class="slide-sm">Park et al. (2023) — generative agents and social simulation</p>
+              <p class="slide-sm">Aher et al. (2023) — using LLMs to simulate survey responses</p>
+              <p class="slide-sm">Lopez-Lira (2025) — expected-utility scoring framework for AI agents</p>
+            </div>
+          </div>
+          <div class="slide-card slide-highlight">
+            <h4>Gap</h4>
+            <p class="slide-sm">No controlled factorial comparison of algorithmic vs. LLM belief update within the same continuous double auction substrate, holding market structure, endowments, and information sets constant.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 4 — Research Questions ======== -->
+      <div class="slide" data-slide="4">
+        <div class="slide-body">
+          <h2 class="slide-heading">Research questions</h2>
+          <div class="slide-formula-card">$$ \text{Plan I} \;\;\overset{?}{\approx}\;\; \text{Plan II} \;\;\overset{?}{\approx}\;\; \text{Plan III} $$</div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>RQ 1.</strong> Does an LLM-driven belief update (Plan II) produce market dynamics statistically equivalent to the deterministic algorithmic baseline (Plan I), as measured by Haessel $R^2$, normalised deviation, amplitude, and turnover?</p>
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>RQ 2.</strong> Does providing the LLM with the explicit closed-form utility function (Plan II: $U_L, U_N, U_A$) yield different posterior valuations than providing only a risk-preference label (Plan III)?</p>
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>RQ 3.</strong> How do risk composition $(\alpha_L, \alpha_N, \alpha_A)$, strategic deception, and endogenous experience $(k_i)$ interact with the belief-formation channel across all three plans?</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 5 — Key Idea ======== -->
+      <div class="slide" data-slide="5">
+        <div class="slide-body">
+          <h2 class="slide-heading">Key idea · three-plan factorial</h2>
+          <p class="slide-text">We hold the market microstructure constant and vary only the belief-update mechanism. Each Utility agent $i$ forms a prior $V_i^{\text{prior}}$ at every period boundary, then updates it to a posterior $V_i^{\text{post}}$ through exactly one of three channels:</p>
+          <div class="slide-three-col">
+            <div class="slide-card">
+              <h4>Plan I · Algorithm</h4>
+              <div class="slide-formula">$V_i^{\text{post}} = f(V_i^{\text{prior}}, M, k_i)$</div>
+              <p class="slide-sm">Deterministic weighted blend. No stochasticity beyond the seeded PRNG. Reproducible baseline.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Plan II · LLM + Forms</h4>
+              <div class="slide-formula">$V_i^{\text{post}} \leftarrow \text{LLM}(\pi_i^{\text{II}})$</div>
+              <p class="slide-sm">Prompt includes the explicit utility functional $U_L, U_N, U_A$ for agent $i$'s risk type, plus wealth and peer claims.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Plan III · LLM + Label</h4>
+              <div class="slide-formula">$V_i^{\text{post}} \leftarrow \text{LLM}(\pi_i^{\text{III}})$</div>
+              <p class="slide-sm">Same wiring as Plan II, but prompt contains only the risk-preference label — no functional form.</p>
+            </div>
+          </div>
+          <p class="slide-note-sm">Identification: same seed, same endowments, same market order → differences arise solely from the update channel.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 6 — Market Substrate ======== -->
+      <div class="slide" data-slide="6">
+        <div class="slide-body">
+          <h2 class="slide-heading">Market substrate · DLM (2005)</h2>
+          <p class="slide-text">The shared environment replicates the Dufwenberg, Lindqvist &amp; Moore (2005) continuous double auction exactly. A session consists of $R = 4$ rounds, each a complete $T = 10$-period market. Dividends are i.i.d. draws from $\{0, 20\}$¢ with $\mathbb{E}[d] = 10$¢.</p>
+          <div class="slide-formula-card">
+            $$ \mathrm{FV}_t \;=\; \mathbb{E}[d] \cdot (T - t + 1) \;=\; 10\,(T - t + 1), \qquad \mathrm{FV}_1 = 100\text{¢},\;\; \mathrm{FV}_{10} = 10\text{¢} $$
+          </div>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Round boundary protocol</h4>
+              <p class="slide-sm">1. Snapshot cash → $\texttt{roundFinalCash}[r]$</p>
+              <p class="slide-sm">2. Increment $k_i \leftarrow k_i + 1$ for all survivors</p>
+              <p class="slide-sm">3. (Round 3 → 4) Run R4 replacement: T2 or T4</p>
+              <p class="slide-sm">4. Reset cash, inventory to endowment; clear order book</p>
+            </div>
+            <div class="slide-card">
+              <h4>Session payoff &amp; batch structure</h4>
+              <div class="slide-formula">$\pi_i = \sum_{r=1}^{R} c_{i,r}^{\text{final}} + 500$¢</div>
+              <p class="slide-sm">Show-up fee: 500¢. One Start click runs 10 sessions (5 &times; T2 + 5 &times; T4). Per-round data is labelled $\texttt{R\{r\}\_S\{s\}}$ in the batch results table.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 7 — Agent Design ======== -->
+      <div class="slide" data-slide="7">
+        <div class="slide-body">
+          <h2 class="slide-heading">Agent design · $N = 6$ Utility agents</h2>
+          <div class="slide-card slide-highlight">
+            <h4>U · Utility agent (sole agent class)</h4>
+            <div class="slide-formula">$\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon),\quad \alpha^\star_{i,t} = \arg\max_{\alpha \in \mathcal{A}} \mathrm{EU}(\alpha)$</div>
+            <p class="slide-sm">All six agents are EU-maximising Utility agents following the Lopez-Lira (2025) framework. Per-period belief update is the experimental variable — the only dimension that varies across Plans I, II, and III.</p>
+          </div>
+          <div class="slide-three-col">
+            <div class="slide-card">
+              <h4>Risk composition</h4>
+              <div class="slide-formula">$(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%</div>
+              <p class="slide-sm">Risk-loving / neutral / averse mix is the sole composition knob. Controlled by three linked sliders.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Strategy cube</h4>
+              <div class="slide-formula">$\text{bias} \times \text{belief} \times \text{risk}$</div>
+              <p class="slide-sm">Each agent draws from $b_i \in \{-0.15, 0, +0.15\}$, a belief mode (honest/deceptive), and a risk preference.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Endogenous experience</h4>
+              <div class="slide-formula">$k_i = \texttt{roundsPlayed} \in \{0,1,2,\ldots\}$</div>
+              <p class="slide-sm">Experience is procedural: $k_i$ starts at 0, incremented each round. Plan I blend weight $w(k_i)$ ramps from 0.60 to 0.90.</p>
+            </div>
+          </div>
+          <p class="slide-note-sm">DLM 2005 uses $N = 6$ homogeneous human subjects. This simulator replaces them with $N = 6$ heterogeneous Utility agents whose belief formation is the experimental treatment.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 8 — Expected-Utility Framework ======== -->
+      <div class="slide" data-slide="8">
+        <div class="slide-body">
+          <h2 class="slide-heading">Expected-utility framework</h2>
+          <div class="slide-formula-card">
+            $$ \mathrm{EU}(\alpha) \;=\; p_{\text{fill}} \cdot U\!\bigl(w_1(\alpha)\bigr) \;+\; (1 - p_{\text{fill}}) \cdot U\!\bigl(w_0\bigr), \qquad \alpha^\star_{i,t} = \arg\max_{\alpha \,\in\, \mathcal{A}} \mathrm{EU}(\alpha) $$
+          </div>
+          <div class="slide-formula-card">
+            $$ \mathcal{A} \;=\; \{\text{hold},\; \text{buy@}A_t,\; \text{sell@}B_t,\; \text{bid},\; \text{ask}\}, \qquad p_{\text{fill}}^{\text{cross}} = 1,\;\; p_{\text{fill}}^{\text{passive}} = 0.30 $$
+          </div>
+          <div class="slide-three-col">
+            <div class="slide-card"><h4>$U_L$ · Risk-loving</h4><div class="slide-formula">$U_L(w) = (w/w_0)^2$</div><p class="slide-sm">Convex. Overweights upside. Bubble-amplifying.</p></div>
+            <div class="slide-card"><h4>$U_N$ · Risk-neutral</h4><div class="slide-formula">$U_N(w) = w/w_0$</div><p class="slide-sm">Linear. Prices at expected value. Baseline.</p></div>
+            <div class="slide-card"><h4>$U_A$ · Risk-averse</h4><div class="slide-formula">$U_A(w) = \sqrt{w/w_0}$</div><p class="slide-sm">Concave. Penalises downside. Dampening.</p></div>
+          </div>
+          <p class="slide-note-sm">Normalized: $u_{i,t} = U_i(w_{i,t})\,/\,U_i(w_{i,0})$ so all agents start at $u = 1$. Risk composition controlled by $(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 9 — Shared Prior & Experience ======== -->
+      <div class="slide" data-slide="9">
+        <div class="slide-body">
+          <h2 class="slide-heading">Shared prior &amp; endogenous experience</h2>
+          <div class="slide-formula-card">
+            $$ V_i^{\text{prior}}(t) \;=\; \mathrm{FV}_t \cdot \bigl(1 + b_i + \varepsilon_t\bigr), \qquad b_i \in \{-0.15,\,0,\,+0.15\}, \qquad \varepsilon_t \sim \mathcal{U}[-0.03,\,0.03] $$
+          </div>
+          <p class="slide-text">All Utility agents share the Lopez-Lira prior parametrisation. Persistent bias $b_i$ induces heterogeneous beliefs; per-tick noise $\varepsilon_t$ is drawn fresh every decision via the seeded PRNG. The three plans differ only in how this prior maps to a posterior $V_i^{\text{post}}$.</p>
+          <div class="slide-formula-card">
+            $$ k_i \;=\; \texttt{roundsPlayed}_i \;\in\; \{0, 1, 2, \ldots\}, \qquad k_i \leftarrow k_i + 1 \;\text{at each round boundary} $$
+          </div>
+          <p class="slide-text">Experience is purely endogenous: every agent enters with $k_i = 0$ and the engine increments the counter after each round. No agent is ever instantiated with $k_i > 0$. Plan I reads $k_i$ to ramp its blend weight; Plans II/III can expose it in the prompt context.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 10 — Plan I ======== -->
+      <div class="slide" data-slide="10">
+        <div class="slide-body">
+          <h2 class="slide-heading">Plan I · algorithmic belief update</h2>
+          <div class="slide-formula-card">
+            $$ V_i^{\text{post}} \;=\; w(k_i) \cdot V_i^{\text{prior}} \;+\; \bigl(1 - w(k_i)\bigr) \cdot \frac{1}{|M|}\sum_{m \in M} \hat{v}_m $$
+          </div>
+          <div class="slide-formula-card">
+            $$ w(k_i) \;=\; 0.6 + 0.1 \cdot \min(3,\, k_i) \;\in\; [0.60,\, 0.90] $$
+          </div>
+          <div class="slide-three-col">
+            <div class="slide-card"><h4>Novice · $k=0$</h4><div class="slide-formula">$w = 0.60$</div><p class="slide-sm">40% weight on peer messages. High social influence.</p></div>
+            <div class="slide-card"><h4>Intermediate · $k \in \{1,2\}$</h4><div class="slide-formula">$w \in \{0.70, 0.80\}$</div><p class="slide-sm">Declining openness to external signals.</p></div>
+            <div class="slide-card"><h4>Veteran · $k \geq 3$</h4><div class="slide-formula">$w = 0.90$</div><p class="slide-sm">90% self-anchored. Minimal social updating.</p></div>
+          </div>
+          <p class="slide-note-sm">Deterministic — no network calls, no stochasticity beyond the seeded PRNG. Plan I is the offline baseline both LLM plans are compared against.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 11 — Trust & Deception ======== -->
+      <div class="slide" data-slide="11">
+        <div class="slide-body">
+          <h2 class="slide-heading">Social learning · trust EMA &amp; strategic deception</h2>
+          <div class="slide-formula-card">
+            $$ \tau_{r \to s} \;\leftarrow\; (1 - \lambda)\,\tau_{r \to s} \;+\; \lambda \cdot \max\!\Bigl(0,\; 1 - \frac{|\hat{v}_s - \mathrm{VWAP}_t|}{\mathrm{VWAP}_t}\Bigr), \qquad \lambda = 0.30 $$
+          </div>
+          <p class="slide-text">Trust of receiver $r$ in sender $s$ is updated by exponential moving average. Closeness is measured against the period's volume-weighted average price, clamped to $[0,1]$. Trust matrices persist across round boundaries — they constitute part of the agent's cumulative experience.</p>
+          <div class="slide-formula-card">
+            $$ \hat{v}_s^{\text{report}} \;\neq\; V_s^{\text{true}} \;\implies\; \text{lie gap} \;=\; |\hat{v}_s^{\text{report}} - V_s^{\text{true}}| \;>\; 0 $$
+          </div>
+          <p class="slide-text">Under a deceptive strategy, the agent broadcasts a claim diverging from its private valuation. The lie-gap magnitude endogenously erodes trust via the EMA and feeds the mean-lie-magnitude diagnostic. This connects to the cheap talk literature (Crawford &amp; Sobel, 1982): signals are credible only when senders' and receivers' incentives align.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 12 — Plan II ======== -->
+      <div class="slide" data-slide="12">
+        <div class="slide-body">
+          <h2 class="slide-heading">Plan II · LLM update with explicit utility forms</h2>
+          <div class="slide-formula-card">
+            $$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \;\supset\; \bigl\{\,U_L(w)=(w/w_0)^2,\;\; U_N(w)=w/w_0,\;\; U_A(w)=\sqrt{w/w_0}\,\bigr\} $$
+          </div>
+          <p class="slide-text">At every period boundary the engine fires one parallel chat completion per Utility agent. The prompt $\pi_i^{\text{II}}$ includes:</p>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Prompt context $\pi_i^{\text{II}}$</h4>
+              <p class="slide-sm">Explicit risk-utility formula for agent $i$'s type</p>
+              <p class="slide-sm">Current mark-to-market wealth $w_{i,t}$</p>
+              <p class="slide-sm">Recent peer claims $\{\hat{v}_m : m \in M\}$</p>
+              <p class="slide-sm">Trust vector $\{\tau_{i \to s}\}$ for context weighting</p>
+              <p class="slide-sm">Experience counter $k_i$ and market state</p>
+            </div>
+            <div class="slide-card">
+              <h4>Execution semantics</h4>
+              <p class="slide-sm">Fire-and-forget: failed LLM call → silent fallback to Plan I for that agent</p>
+              <p class="slide-sm">Returned valuation $\in [\mathrm{FV}_t \cdot 0.5,\; \mathrm{FV}_t \cdot 2.0]$ (clamped)</p>
+              <p class="slide-sm">Parallel dispatch: $N_U$ completions per period boundary</p>
+              <p class="slide-sm">LLM temperature and provider configurable at runtime</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 13 — Plan III ======== -->
+      <div class="slide" data-slide="13">
+        <div class="slide-body">
+          <h2 class="slide-heading">Plan III · LLM update with risk label only</h2>
+          <div class="slide-formula-card">
+            $$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{III}}\bigr), \qquad \pi_i^{\text{III}} \;\supset\; \{\,\text{risk-loving} \mid \text{risk-neutral} \mid \text{risk-averse}\,\} $$
+          </div>
+          <p class="slide-text">Identical wiring and execution semantics to Plan II. The sole difference: the prompt $\pi_i^{\text{III}}$ omits the closed-form $U_L / U_N / U_A$ expressions and supplies only a natural-language risk-preference label.</p>
+          <div class="slide-card slide-highlight">
+            <h4>Identification argument</h4>
+            <p class="slide-sm">Plan II $\setminus$ Plan III $=$ the causal effect of providing an explicit functional form. If Plan II $\approx$ Plan III, the LLM has already internalised the mapping from "risk-loving" to convex preferences — the formula is redundant. If Plan II $\neq$ Plan III, the functional form carries information the label does not, and the LLM's implicit risk model diverges from the specified one.</p>
+          </div>
+          <p class="slide-note-sm">Both Plans II and III require an API key. Fallback semantics, clamping, and parallel dispatch are shared.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 14 — Experimental Design ======== -->
+      <div class="slide" data-slide="14">
+        <div class="slide-body">
+          <h2 class="slide-heading">Experimental design · treatments &amp; parameters</h2>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Factorial structure</h4>
+              <p class="slide-sm"><strong>Belief channel:</strong> Plan I / Plan II / Plan III</p>
+              <p class="slide-sm"><strong>Risk composition:</strong> $(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%</p>
+              <p class="slide-sm"><strong>Deception:</strong> honest / strategic misreporting</p>
+              <p class="slide-sm"><strong>Population:</strong> $N = 6$ Utility agents; risk split $(\alpha_L, \alpha_N, \alpha_A)$</p>
+              <p class="slide-sm"><strong>Session structure:</strong> $R = 4$ rounds of $T = 10$ periods</p>
+            </div>
+            <div class="slide-card">
+              <h4>Controls &amp; reproducibility</h4>
+              <p class="slide-sm">Seeded mulberry32 PRNG: identical $(\text{pop.}, \text{seed})$ → identical run under Plan I</p>
+              <p class="slide-sm">Endowments: $c_i \sim \mathcal{U}[800, 1200]$, $q_i \sim \mathcal{U}\{2,3,4\}$</p>
+              <p class="slide-sm">DLM strict mode: $N = 6$, type A/B, T2/T4 R4 replacement</p>
+              <p class="slide-sm">Tick resolution: $K$ ticks/period $\times\, T \times R$</p>
+            </div>
+          </div>
+          <div class="slide-formula-card">
+            $$ \text{Session} \;=\; R \times T \times K \;=\; 4 \times 10 \times 18 \;=\; 720 \;\text{ticks}, \qquad \text{Batch} = 10 \;\text{sessions} \;=\; 7200 \;\text{ticks} $$
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>Data collection.</strong> Per-round metrics are labelled $\texttt{R\{r\}\_S\{s\}}$ (Round $r$ of Session $s$). One Start press runs all 10 sessions (5 &times; first treatment + 5 &times; other), collecting 40 round-level rows (4 rounds &times; 10 sessions) with mean deviation, turnover, trades, volume, and payoff.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 15 — DLM Replication ======== -->
+      <div class="slide" data-slide="15">
+        <div class="slide-body">
+          <h2 class="slide-heading">DLM replication · Strict-DLM mode</h2>
+          <p class="slide-text">The Strict-DLM paradigm replicates the exact DLM (2005) protocol: $N = 6$ agents, 3 type A ($c = 200$¢, $q = 6$) + 3 type B ($c = 600$¢, $q = 2$), buy-and-hold value $V_{\text{BH}} = 1000$¢. At the round 3→4 boundary, the engine runs Fisher-Yates replacement:</p>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>T2 treatment (R4-⅔)</h4>
+              <div class="slide-formula">$k = 2$ replaced, 4 veterans remain</div>
+              <p class="slide-sm">Two-thirds of R4 population is experienced. Expected: bubble suppression carries over from R3.</p>
+            </div>
+            <div class="slide-card">
+              <h4>T4 treatment (R4-⅓)</h4>
+              <div class="slide-formula">$k = 4$ replaced, 2 veterans remain</div>
+              <p class="slide-sm">One-third experienced. Expected: fresh agents reignite the bubble in R4 despite veteran presence.</p>
+            </div>
+          </div>
+          <p class="slide-text">One click of Start runs 10 animated sessions (5 $\times$ first treatment + 5 $\times$ second) at the Speed slider rate. Per-round metrics are collected with $\texttt{R\{r\}\_S\{s\}}$ labels (40 rows total) into the batch results table, with per-treatment aggregates for T2 vs T4 comparison.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 16 — Market-Quality Metrics ======== -->
+      <div class="slide" data-slide="16">
+        <div class="slide-body">
+          <h2 class="slide-heading">Market-quality metrics</h2>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Haessel $R^2$</h4>
+              <div class="slide-formula">$R^2_H = 1 - \dfrac{\sum_t (\bar{p}_t - \mathrm{FV}_t)^2}{\sum_t (\mathrm{FV}_t - \overline{\mathrm{FV}})^2}$</div>
+              <p class="slide-sm">Goodness-of-fit of mean transaction price to the fundamental staircase. $R^2_H \to 1$ indicates efficient pricing.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Normalized deviation</h4>
+              <div class="slide-formula">$\mathrm{ND} = \dfrac{\sum_j |p_j - \mathrm{FV}_{t(j)}| \cdot q_j}{Q}$</div>
+              <p class="slide-sm">Total absolute mispricing normalised by shares outstanding and horizon. Comparable across $N$.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Amplitude</h4>
+              <div class="slide-formula">$A = \dfrac{\max_t (\bar{p}_t - \mathrm{FV}_t) - \min_t (\bar{p}_t - \mathrm{FV}_t)}{\mathrm{FV}_1}$</div>
+              <p class="slide-sm">Peak-to-trough excursion of the mean-price residual. Captures bubble height.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Turnover &amp; Allocative efficiency</h4>
+              <div class="slide-formula">$\mathrm{TO} = \dfrac{\sum_t q_t}{Q}, \qquad \mathrm{AE} = \dfrac{U_{\text{realized}}}{U_{\max}}$</div>
+              <p class="slide-sm">TO measures speculative intensity; AE measures whether assets flow to highest-valuation holders.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 17 — Hypotheses ======== -->
+      <div class="slide" data-slide="17">
+        <div class="slide-body">
+          <h2 class="slide-heading">Hypotheses</h2>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>H1 (LLM–algorithmic equivalence).</strong> Under matched seeds and endowments, Plan II produces market-quality metrics $(R^2_H, \mathrm{ND}, A, \mathrm{TO})$ not significantly different from Plan I: $\Delta_{\text{II-I}} \approx 0$.</p>
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>H2 (Form–label divergence).</strong> Plan II posterior trajectories $\{V_i^{\text{post}}\}$ differ systematically from Plan III: the explicit functional form carries information that the risk label alone does not convey to the LLM.</p>
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>H3 (Risk composition effect).</strong> Increasing $\alpha_L$ (risk-loving share) amplifies bubble magnitude (higher $A$, lower $R^2_H$), while increasing $\alpha_A$ dampens it — this effect holds across all three plans.</p>
+          </div>
+          <div class="slide-card slide-highlight">
+            <p class="slide-sm"><strong>H4 (Deception–trust interaction).</strong> Strategic deception increases ND and decreases AE by corrupting the social-learning signal. The trust EMA partially mitigates this as $\tau_{r \to s} \to 0$ for persistent liars.</p>
+          </div>
+          <p class="slide-note-sm">Testable via within-seed paired comparisons (H1, H2) and across-seed Monte Carlo sweeps over the $(\alpha_L, \alpha_N, \alpha_A)$ simplex (H3, H4).</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 18 — Analysis Framework ======== -->
+      <div class="slide" data-slide="18">
+        <div class="slide-body">
+          <h2 class="slide-heading">Results · analysis framework</h2>
+          <p class="slide-text">The platform supports three levels of analysis, each targeting different hypotheses:</p>
+          <div class="slide-three-col">
+            <div class="slide-card">
+              <h4>Within-seed comparison</h4>
+              <p class="slide-sm">Run identical $(\text{seed}, N, \alpha)$ under Plans I, II, III. Compare price trajectories tick-by-tick and metric vectors period-by-period. Directly tests H1 and H2.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Monte Carlo sweep</h4>
+              <p class="slide-sm">Vary seeds and risk compositions across the $(\alpha_L, \alpha_N, \alpha_A)$ simplex. Aggregate metric distributions to test H3 and H4 under repeated sampling.</p>
+            </div>
+            <div class="slide-card">
+              <h4>DLM batch replication</h4>
+              <p class="slide-sm">10-session animated batch (5 $\times$ T2 + 5 $\times$ T4). 40 round-level rows ($\texttt{R\{r\}\_S\{s\}}$) with per-treatment aggregates. Validate against DLM 2005 Table 2.</p>
+            </div>
+          </div>
+          <div class="slide-formula-card">
+            $$ \text{Diagnostic vector:} \quad \mathbf{d} \;=\; \bigl(R^2_H,\; \mathrm{ND},\; A,\; \mathrm{TO},\; \mathrm{AE},\; \bar{\tau},\; \overline{|\text{lie}|}\bigr) $$
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 19 — Robustness ======== -->
+      <div class="slide" data-slide="19">
+        <div class="slide-body">
+          <h2 class="slide-heading">Robustness &amp; validation</h2>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Internal validity</h4>
+              <p class="slide-sm"><strong>Reproducibility:</strong> seeded PRNG guarantees identical runs under Plan I. Endowment edits preserve the engine seed.</p>
+              <p class="slide-sm"><strong>Replay system:</strong> append-only history arrays enable exact state reconstruction at any tick via $\texttt{buildViewAt}(t)$.</p>
+              <p class="slide-sm"><strong>Sensitivity:</strong> all tunables exposed as sliders with safe defaults via $\texttt{ctx.tunables}$; parameter sweeps are first-class.</p>
+            </div>
+            <div class="slide-card">
+              <h4>External validity &amp; limitations</h4>
+              <p class="slide-sm"><strong>LLM stochasticity:</strong> temperature $> 0$ introduces irreducible noise; fallback to Plan I on failure introduces survivorship.</p>
+              <p class="slide-sm"><strong>Single CDA environment:</strong> results may not generalise to call markets, limit-order books, or other auction formats.</p>
+              <p class="slide-sm"><strong>API latency:</strong> async LLM calls may interact with tick timing; clamped valuations bound extreme outputs.</p>
+            </div>
+          </div>
+          <p class="slide-note-sm">The platform's no-dependency, browser-native architecture eliminates environment-configuration confounds and enables full portability.</p>
+        </div>
+      </div>
+
+      <!-- ======== Slide 20 — Contributions ======== -->
+      <div class="slide" data-slide="20">
+        <div class="slide-body">
+          <h2 class="slide-heading">Contributions</h2>
+          <div class="slide-three-col">
+            <div class="slide-card slide-highlight">
+              <h4>Theoretical</h4>
+              <p class="slide-sm">Formal expected-utility framework for heterogeneous belief formation in a CDA, connecting the SSW/DLM experimental-markets tradition to the Lopez-Lira EU-scoring approach. First controlled isolation of the LLM belief channel.</p>
+            </div>
+            <div class="slide-card slide-highlight">
+              <h4>Methodological</h4>
+              <p class="slide-sm">Open-source, browser-native simulation platform with seeded PRNG reproducibility, replay, and multi-paradigm support (Strict-DLM, Lopez-Lira, AIPE). No build step, no dependencies.</p>
+            </div>
+            <div class="slide-card slide-highlight">
+              <h4>Empirical</h4>
+              <p class="slide-sm">First within-substrate factorial comparison of algorithmic vs. LLM-augmented vs. label-only belief updating. Three-plan design enables causal identification of the information content of utility-function representations.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 21 — Limitations & Future Work ======== -->
+      <div class="slide" data-slide="21">
+        <div class="slide-body">
+          <h2 class="slide-heading">Limitations &amp; future work</h2>
+          <div class="slide-two-col">
+            <div class="slide-card">
+              <h4>Current limitations</h4>
+              <p class="slide-sm">LLM output is non-deterministic: temperature, context window, and model version affect reproducibility.</p>
+              <p class="slide-sm">Single auction format (CDA); generalisability to other market mechanisms untested.</p>
+              <p class="slide-sm">Agent heterogeneity limited to the strategy cube ($\text{bias} \times \text{belief} \times \text{risk}$); richer preference spaces unexplored.</p>
+              <p class="slide-sm">No human subjects — all agents are artificial; ecological validity requires lab validation.</p>
+            </div>
+            <div class="slide-card">
+              <h4>Extensions</h4>
+              <p class="slide-sm">Multi-provider benchmarking (GPT-4o/5.4, Claude Opus/Sonnet 4.6, Gemini 3/3.1) to test model-dependence of H2.</p>
+              <p class="slide-sm">Hybrid markets: mix LLM agents with human subjects for ecological validity.</p>
+              <p class="slide-sm">Richer communication: multi-round dialogue and explicit reasoning chains in Plan II/III prompts.</p>
+              <p class="slide-sm">Field-data calibration: estimate $(b_i, \varepsilon)$ distributions from market microstructure data.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== Slide 22 — Takeaway ======== -->
+      <div class="slide" data-slide="22">
+        <div class="slide-body slide-center">
+          <h2 class="slide-heading">Takeaway</h2>
+          <div class="slide-big">
+            Can an LLM replicate — or improve upon — a calibrated algorithmic belief-update rule in an experimental asset market?
+          </div>
+          <div class="slide-formula-card">$$ \text{Plan I} \;\;\overset{?}{\approx}\;\; \text{Plan II} \;\;\overset{?}{\approx}\;\; \text{Plan III} $$</div>
+          <p class="slide-text">This platform provides the controlled experimental environment to answer that question: same market, same endowments, same seed — only the belief channel varies.</p>
+          <div class="slide-env-row">
+            <span class="slide-env-badge slide-dlm">Plan I · Algorithmic</span>
+            <span class="slide-env-badge slide-ll">Plan II · LLM + Utility Forms</span>
+            <span class="slide-env-badge slide-wang">Plan III · LLM + Risk Label</span>
+          </div>
+          <p class="slide-note-sm">Keyboard: ← / → navigate · F fullscreen · Esc exit &nbsp;|&nbsp; Switch to the Experiment tab to run a live session</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script defer src="https://cloud.umami.is/script.js" data-website-id="14acd7f1-9293-4e5e-8439-d8ffa4ed90a6"></script>
+<script data-cfasync="false" src="js/mathml.js?v=20"></script>
+<script data-cfasync="false" src="js/utility.js?v=20"></script>
+<script data-cfasync="false" src="js/messaging.js?v=20"></script>
+<script data-cfasync="false" src="js/market.js?v=20"></script>
+<script data-cfasync="false" src="js/agents.js?v=20"></script>
+<script data-cfasync="false" src="js/logger.js?v=20"></script>
+<script data-cfasync="false" src="js/viz.js?v=20"></script>
+<script data-cfasync="false" src="js/ai.js?v=20"></script>
+<script data-cfasync="false" src="js/engine.js?v=20"></script>
+<script data-cfasync="false" src="js/ui.js?v=20"></script>
+<script data-cfasync="false" src="js/replay.js?v=20"></script>
+<script data-cfasync="false" src="js/main.js?v=20"></script>
+</body>
+</html>

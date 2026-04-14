@@ -1,0 +1,45 @@
+<mxfile host="app.diagrams.net" modified="2026-04-13T00:00:00.000Z" agent="bubble-math" version="24.7.17" etag="fig3-revision" type="device">
+  <diagram name="Figure 3 — Information Aggregation Protocols" id="fig3-revision">
+    <mxGraphModel dx="900" dy="360" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="860" pageHeight="300" math="1" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="g1" value="Belief Revision Protocols" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#16a34a;fontColor=#14532d;fontStyle=1;fontSize=13;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="780" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- Plan I -->
+        <mxCell id="n1" value="&lt;b&gt;Plan I · algorithmic&lt;/b&gt;&#xa;V&lt;sup&gt;post&lt;/sup&gt; = w · V&lt;sup&gt;prior&lt;/sup&gt; + (1−w) · m̄&#xa;w = 0.6 + 0.1 · min(3, k)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontColor=#14532d;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="56" width="240" height="76" as="geometry"/>
+        </mxCell>
+
+        <!-- Plan II -->
+        <mxCell id="n2" value="&lt;b&gt;Plan II · LLM + forms&lt;/b&gt;&#xa;prompt ⊇ {U&lt;sub&gt;L&lt;/sub&gt;, U&lt;sub&gt;N&lt;/sub&gt;, U&lt;sub&gt;A&lt;/sub&gt;}&#xa;a* ← LLM(π&lt;sup&gt;II&lt;/sup&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="306" y="56" width="240" height="76" as="geometry"/>
+        </mxCell>
+
+        <!-- Plan III -->
+        <mxCell id="n3" value="&lt;b&gt;Plan III · LLM + label&lt;/b&gt;&#xa;prompt ⊇ risk label only&#xa;a* ← LLM(π&lt;sup&gt;III&lt;/sup&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce7f3;strokeColor=#db2777;fontColor=#831843;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="562" y="56" width="230" height="76" as="geometry"/>
+        </mxCell>
+
+        <!-- Trust EMA -->
+        <mxCell id="n4" value="Trust EMA &#xa0; τ&lt;sub&gt;r→s&lt;/sub&gt; ← (1−α) τ + α · closeness &#xa0; α = 0.30" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ccfbf1;strokeColor=#0d9488;fontColor=#134e4a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="160" y="156" width="520" height="48" as="geometry"/>
+        </mxCell>
+
+        <!-- Connectors -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#16a34a;dashed=1;" edge="1" parent="1" source="n1" target="n4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#db2777;dashed=1;" edge="1" parent="1" source="n2" target="n4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;strokeColor=#db2777;dashed=1;" edge="1" parent="1" source="n3" target="n4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
