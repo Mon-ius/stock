@@ -62,7 +62,7 @@
 <section class="tab-pane active" id="tab-experiment">
 <main class="grid">
   <!-- ============================================================
-       Experiment settings — population mix (F/T/U summing to N=6),
+       Experiment settings — population mix (F/T/U summing to N=100),
        risk-preference split (αL/αN/αA), and the AI endpoint for
        Plans II/III. F and T are settable to 0 for a pure utility-
        agent market. Paper-fixed constants (T, μ_d, dividend shape,
@@ -78,21 +78,21 @@
     <div class="params-body">
 
       <details class="psec" open>
-        <summary>Trade settings <span class="muted" id="mix-total">(N = 6)</span></summary>
+        <summary>Trade settings <span class="muted" id="mix-total">(N = 100)</span></summary>
         <div class="psec-body">
-          <div class="param-row bg-only" data-tip="N(F) — Fundamentalist agents in the background. Rational mean-reversion anchors on FV. Set to 0 to remove the rational anchor entirely and study how Utility agents behave without any FV-pinned counterparty. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
+          <div class="param-row bg-only" data-tip="N(F) — Fundamentalist agents in the background. Rational mean-reversion anchors on FV. Set to 0 to remove the rational anchor entirely and study how Utility agents behave without any FV-pinned counterparty. Editing this slider rescales the U slot within the fixed N = 100 and re-samples on release.">
             <div class="param-head">
               <label for="p-count-f">Fundamentalists <span class="pval-sub">N(F)</span></label>
               <span class="pval" id="v-count-f">0</span>
             </div>
-            <input type="range" id="p-count-f" min="0" max="5" step="1" value="0">
+            <input type="range" id="p-count-f" min="0" max="99" step="1" value="0">
           </div>
-          <div class="param-row bg-only" data-tip="N(T) — Trend-follower agents in the background. Momentum / positive-feedback trader from the De Long–Shleifer–Summers–Waldmann (1990) lineage. Set to 0 to remove the momentum inflation channel entirely. Editing this slider rescales the U slot within the fixed N = 6 and re-samples on release.">
+          <div class="param-row bg-only" data-tip="N(T) — Trend-follower agents in the background. Momentum / positive-feedback trader from the De Long–Shleifer–Summers–Waldmann (1990) lineage. Set to 0 to remove the momentum inflation channel entirely. Editing this slider rescales the U slot within the fixed N = 100 and re-samples on release.">
             <div class="param-head">
               <label for="p-count-t">Trend followers <span class="pval-sub">N(T)</span></label>
               <span class="pval" id="v-count-t">0</span>
             </div>
-            <input type="range" id="p-count-t" min="0" max="5" step="1" value="0">
+            <input type="range" id="p-count-t" min="0" max="99" step="1" value="0">
           </div>
           <div class="param-row dlm-treatment-row">
             <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV_t · (1 + δᵢ · β). δᵢ ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and β defaults to 0.15. The tilt bᵢ = δᵢ · β is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF bᵢ is zeroed and every agent starts from the true FV.">
@@ -110,14 +110,14 @@
               </label>
             </label>
           </div>
-          <div class="param-row dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. T2 (R4-⅔) replaces 2 agents in round 4; T4 (R4-⅓) replaces 4. One click of Start runs all 10 sessions.">
+          <div class="param-row dlm-treatment-row" data-tip="DLM 2005 10-session batch design (scaled to N = 100): 5 sessions with the selected first treatment, then 5 sessions with the other. T20 (R4-⅔) replaces 20 agents in round 4; T40 (R4-⅓) replaces 40. One click of Start runs all 10 sessions.">
             <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="2" checked>
-              <span><strong>First T2</strong> · R4-&#8532;</span>
+              <input type="radio" name="dlm-treatment" value="20" checked>
+              <span><strong>First T20</strong> · R4-&#8532;</span>
             </label>
             <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="4">
-              <span><strong>First T4</strong> · R4-&#8531;</span>
+              <input type="radio" name="dlm-treatment" value="40">
+              <span><strong>First T40</strong> · R4-&#8531;</span>
             </label>
           </div>
         </div>
@@ -298,7 +298,7 @@
             <div class="const-item">
               <dt>sessions <span class="const-val">= 10</span></dt>
               <dd class="const-label">Five per treatment (R4-⅔ and R4-⅓)</dd>
-              <dd class="const-note">The multi-session batch runner in the DLM panel reproduces DLM's 10-session design by sequencing 5 × T2 (R4-⅔) then 5 × T4 (R4-⅓) through the simulator in one click; each session uses a fresh engine seed and a fresh two-type endowment draw.<span class="const-src">§I, Table 1</span></dd>
+              <dd class="const-note">The multi-session batch runner in the DLM panel reproduces DLM's 10-session design (scaled to N = 100) by sequencing 5 × T20 (R4-⅔) then 5 × T40 (R4-⅓) through the simulator in one click; each session uses a fresh engine seed and a fresh two-type endowment draw.<span class="const-src">§I, Table 1</span></dd>
             </div>
             <div class="const-item">
               <dt>payoff <span class="const-val">Σ final cash + 500¢</span></dt>
@@ -1243,7 +1243,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
           <tr><td class="term">Plan II</td><td>LLM posterior · utility forms</td><td>One chat completion per Utility agent per period. LLM returns a discrete action from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
           <tr><td class="term">Plan III</td><td>LLM posterior · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied. Same seven-action output set.</td></tr>
           <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Source paper for the shared market substrate: $T$, $\mathbb{E}[d]$, $\mathrm{FV}_t$, and the four-round session loop.</td></tr>
-          <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the sole agent class ($N = 6$). Per-period belief update is what Plans I, II, and III compare.</td></tr>
+          <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the sole agent class ($N = 100$). Per-period belief update is what Plans I, II, and III compare.</td></tr>
           <tr><td class="term">FV</td><td>Fundamental value</td><td>$\mathrm{FV}_t = \mathbb{E}[d] \cdot (T - t + 1)$ — risk-neutral value at the start of period $t$.</td></tr>
           <tr><td class="term">EU</td><td>Expected utility</td><td>$\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1-p_{\text{fill}})\cdot U(w_0)$ — the Utility agent's scoring functional over $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$.</td></tr>
           <tr><td class="term">VWAP</td><td>Volume-weighted average price</td><td>Per-period average trade price weighted by quantity; baseline for the trust EMA update.</td></tr>
@@ -1253,7 +1253,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
           <tr><td class="term">AE</td><td>Allocative efficiency</td><td>Realized aggregate valuation divided by the theoretical maximum: $\mathrm{AE} = \sum_i \hat{V}_i q_i \,/\, (\hat{V}_{\max} \cdot Q)$, where $\hat{V}_i = V_i^{\text{post}}$.</td></tr>
           <tr><td class="term">Session</td><td>10-session DLM batch</td><td>One click of Start runs 10 sessions (5 &times; first treatment + 5 &times; second treatment). Each session is a complete $R = 4$ round game; data is collected per round with labels $\texttt{R\{r\}\_S\{s\}}$.</td></tr>
           <tr><td class="term">R<em>r</em>_S<em>s</em></td><td>Round–session label</td><td>Identifies Round $r$ of Session $s$ in the batch results table. Example: R3_S7 = round 3 of session 7.</td></tr>
-          <tr><td class="term">T2 / T4</td><td>DLM treatment sizes</td><td>T2 (R4-&#8532;): 2 agents replaced in R4, 4 veterans remain. T4 (R4-&#8531;): 4 replaced, 2 veterans remain. First 5 sessions use the selected treatment, last 5 use the other.</td></tr>
+          <tr><td class="term">T20 / T40</td><td>Treatment sizes (N = 100)</td><td>T20 (R4-&#8532;): 20 agents replaced in R4, 80 veterans remain. T40 (R4-&#8531;): 40 replaced, 60 veterans remain. First 5 sessions use the selected treatment, last 5 use the other.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1324,8 +1324,8 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
         <div class="plot-info"><h4>Market-Quality Statistics (Table 1)</h4><p>Live session metrics: Haessel $R^2$, normalized price deviations, amplitude, turnover, allocative efficiency, welfare, and deception statistics. Updates every render tick.</p></div>
       </div>
       <div class="plot-desc">
-        <div class="plot-icon" style="background:var(--fg-2);">T2</div>
-        <div class="plot-info"><h4>10-Session Batch Results (Table 2)</h4><p>Per-round market-quality metrics across the 10-session DLM batch. Each row is labelled $\texttt{R\{r\}\_S\{s\}}$ with mean deviation, turnover, trade count, volume, and aggregate payoff. Per-treatment aggregates summarise T2 vs T4 performance.</p></div>
+        <div class="plot-icon" style="background:var(--fg-2);">T20</div>
+        <div class="plot-info"><h4>10-Session Batch Results (Table 2)</h4><p>Per-round market-quality metrics across the 10-session DLM batch. Each row is labelled $\texttt{R\{r\}\_S\{s\}}$ with mean deviation, turnover, trade count, volume, and aggregate payoff. Per-treatment aggregates summarise T20 vs T40 performance.</p></div>
       </div>
     </div>
 
@@ -1472,13 +1472,13 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
               <h4>Round boundary protocol</h4>
               <p class="slide-sm">1. Snapshot cash → $\texttt{roundFinalCash}[r]$</p>
               <p class="slide-sm">2. Increment $k_i \leftarrow k_i + 1$ for all survivors</p>
-              <p class="slide-sm">3. (Round 3 → 4) Run R4 replacement: T2 or T4</p>
+              <p class="slide-sm">3. (Round 3 → 4) Run R4 replacement: T20 or T40</p>
               <p class="slide-sm">4. Reset cash, inventory to endowment; clear order book</p>
             </div>
             <div class="slide-card">
               <h4>Session payoff &amp; batch structure</h4>
               <div class="slide-formula">$\pi_i = \sum_{r=1}^{R} c_{i,r}^{\text{final}} + 500$¢</div>
-              <p class="slide-sm">Show-up fee: 500¢. One Start click runs 10 sessions (5 &times; T2 + 5 &times; T4). Per-round data is labelled $\texttt{R\{r\}\_S\{s\}}$ in the batch results table.</p>
+              <p class="slide-sm">Show-up fee: 500¢. One Start click runs 10 sessions (5 &times; T20 + 5 &times; T40). Per-round data is labelled $\texttt{R\{r\}\_S\{s\}}$ in the batch results table.</p>
             </div>
           </div>
         </div>
@@ -1487,7 +1487,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
       <!-- ======== Slide 7 — Agent Design ======== -->
       <div class="slide" data-slide="7">
         <div class="slide-body">
-          <h2 class="slide-heading">Agent design · $N = 6$ Utility agents</h2>
+          <h2 class="slide-heading">Agent design · $N = 100$ Utility agents</h2>
           <div class="slide-card slide-highlight">
             <h4>U · Utility agent (sole agent class)</h4>
             <div class="slide-formula">$\text{prior}_t = \mathrm{FV}_t \cdot (1 + b_i + \varepsilon),\quad \alpha^\star_{i,t} = \arg\max_{\alpha \in \mathcal{A}} \mathrm{EU}(\alpha)$</div>
@@ -1510,7 +1510,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
               <p class="slide-sm">Experience is procedural: $k_i$ starts at 0, incremented each round. Plan I blend weight $w(k_i)$ ramps from 0.60 to 0.90.</p>
             </div>
           </div>
-          <p class="slide-note-sm">DLM 2005 uses $N = 6$ homogeneous human subjects. This simulator replaces them with $N = 6$ heterogeneous Utility agents whose belief formation is the experimental treatment.</p>
+          <p class="slide-note-sm">DLM 2005 uses $N = 6$ homogeneous human subjects. This simulator scales the protocol to $N = 100$ heterogeneous Utility agents whose belief formation is the experimental treatment.</p>
         </div>
       </div>
 
@@ -1636,14 +1636,14 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
               <p class="slide-sm"><strong>Belief channel:</strong> Plan I / Plan II / Plan III</p>
               <p class="slide-sm"><strong>Risk composition:</strong> $(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%</p>
               <p class="slide-sm"><strong>Deception:</strong> honest / strategic misreporting</p>
-              <p class="slide-sm"><strong>Population:</strong> $N = 6$ Utility agents; risk split $(\alpha_L, \alpha_N, \alpha_A)$</p>
+              <p class="slide-sm"><strong>Population:</strong> $N = 100$ Utility agents; risk split $(\alpha_L, \alpha_N, \alpha_A)$</p>
               <p class="slide-sm"><strong>Session structure:</strong> $R = 4$ rounds of $T = 10$ periods</p>
             </div>
             <div class="slide-card">
               <h4>Controls &amp; reproducibility</h4>
               <p class="slide-sm">Seeded mulberry32 PRNG: identical $(\text{pop.}, \text{seed})$ → identical run under Plan I</p>
               <p class="slide-sm">Endowments: $c_i \sim \mathcal{U}[800, 1200]$, $q_i \sim \mathcal{U}\{2,3,4\}$</p>
-              <p class="slide-sm">DLM strict mode: $N = 6$, type A/B, T2/T4 R4 replacement</p>
+              <p class="slide-sm">DLM strict mode: $N = 100$, type A/B, T20/T40 R4 replacement</p>
               <p class="slide-sm">Tick resolution: $K$ ticks/period $\times\, T \times R$</p>
             </div>
           </div>
@@ -1660,20 +1660,20 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
       <div class="slide" data-slide="15">
         <div class="slide-body">
           <h2 class="slide-heading">DLM replication · Strict-DLM mode</h2>
-          <p class="slide-text">The Strict-DLM paradigm replicates the exact DLM (2005) protocol: $N = 6$ agents, 3 type A ($c = 200$¢, $q = 6$) + 3 type B ($c = 600$¢, $q = 2$), buy-and-hold value $V_{\text{BH}} = 1000$¢. At the round 3→4 boundary, the engine runs Fisher-Yates replacement:</p>
+          <p class="slide-text">The Strict-DLM paradigm replicates the DLM (2005) protocol scaled to $N = 100$ (half type A with $c = 200$¢, $q = 6$; half type B with $c = 600$¢, $q = 2$), buy-and-hold value $V_{\text{BH}} = 1000$¢. At the round 3→4 boundary, the engine runs Fisher-Yates replacement:</p>
           <div class="slide-two-col">
             <div class="slide-card">
-              <h4>T2 treatment (R4-⅔)</h4>
-              <div class="slide-formula">$k = 2$ replaced, 4 veterans remain</div>
-              <p class="slide-sm">Two-thirds of R4 population is experienced. Expected: bubble suppression carries over from R3.</p>
+              <h4>T20 treatment (R4-⅔)</h4>
+              <div class="slide-formula">$k = 20$ replaced, 80 veterans remain</div>
+              <p class="slide-sm">Most of R4 population is experienced. Expected: bubble suppression carries over from R3.</p>
             </div>
             <div class="slide-card">
-              <h4>T4 treatment (R4-⅓)</h4>
-              <div class="slide-formula">$k = 4$ replaced, 2 veterans remain</div>
-              <p class="slide-sm">One-third experienced. Expected: fresh agents reignite the bubble in R4 despite veteran presence.</p>
+              <h4>T40 treatment (R4-⅓)</h4>
+              <div class="slide-formula">$k = 40$ replaced, 60 veterans remain</div>
+              <p class="slide-sm">Larger fresh intake. Expected: fresh agents reignite the bubble in R4 despite veteran presence.</p>
             </div>
           </div>
-          <p class="slide-text">One click of Start runs 10 animated sessions (5 $\times$ first treatment + 5 $\times$ second) at the Speed slider rate. Per-round metrics are collected with $\texttt{R\{r\}\_S\{s\}}$ labels (40 rows total) into the batch results table, with per-treatment aggregates for T2 vs T4 comparison.</p>
+          <p class="slide-text">One click of Start runs 10 animated sessions (5 $\times$ first treatment + 5 $\times$ second) at the Speed slider rate. Per-round metrics are collected with $\texttt{R\{r\}\_S\{s\}}$ labels (40 rows total) into the batch results table, with per-treatment aggregates for T20 vs T40 comparison.</p>
         </div>
       </div>
 
@@ -1742,7 +1742,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
             </div>
             <div class="slide-card">
               <h4>DLM batch replication</h4>
-              <p class="slide-sm">10-session animated batch (5 $\times$ T2 + 5 $\times$ T4). 40 round-level rows ($\texttt{R\{r\}\_S\{s\}}$) with per-treatment aggregates. Validate against DLM 2005 Table 2.</p>
+              <p class="slide-sm">10-session animated batch (5 $\times$ T20 + 5 $\times$ T40). 40 round-level rows ($\texttt{R\{r\}\_S\{s\}}$) with per-treatment aggregates. Validate against DLM 2005 Table 2.</p>
             </div>
           </div>
           <div class="slide-formula-card">

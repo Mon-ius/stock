@@ -1122,7 +1122,7 @@ function sampleEndowment(rng, dist) {
 /**
  * sampleAgents — draw a list of per-agent specs for the relaxed
  * paradigms (Lopez-Lira and AIPE). DLM strict mode does NOT use this
- * function — it uses dlmSampleAgents below, which pins N=6 and the
+ * function — it uses dlmSampleAgents below, which pins the DLM and
  * two DLM endowment types and never instantiates a non-DLMTrader
  * agent. This function deliberately drops the legacy E branch: no
  * agent in any paradigm is ever instantiated with pre-assigned

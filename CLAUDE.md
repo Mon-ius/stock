@@ -58,7 +58,7 @@ Invariants that the replay system relies on:
 ## Session structure: rounds, periods, and the 10-session batch
 
 A single press of Start runs a **10-session batch** — 5 sessions with the
-first selected DLM treatment (T2 or T4) followed by 5 with the other.
+first selected DLM treatment (T20 or T40) followed by 5 with the other.
 Each *session* is `roundsPerSession` consecutive *rounds* (fixed at
 `R = 4`, the DLM 2005 design). Each round is a complete `T = 10` period
 market that lasts `T × ticksPerPeriod = 180` ticks, so a session is
@@ -79,7 +79,7 @@ At the end of period `T` of a non-final round the `Engine`:
    branch to the experienced branch for the next round,
 4. if the round that just ended was round 3 and `ctx.treatmentSize > 0`,
    runs `_round4Replacement()` — Fisher-Yates selects `treatmentSize`
-   experienced agents (T2 = 2 replacements, T4 = 4), clones their
+   experienced agents (T20 = 20 replacements, T40 = 40), clones their
    specs with a fresh name drawn from `AGENT_NAMES`, and re-instantiates
    them via `buildAgentsFromSpecs` at the vacated numeric ids with
    `roundsPlayed = 0` and `replacementFresh = true`,
@@ -179,10 +179,12 @@ When adding a new tunable:
 4. Read it from `ctx.tunables` in the consuming agent/engine code with a
    fallback to the hard-coded default so legacy callers still work.
 
-Total population is fixed at N = 6 per DLM 2005 §I. The paper uses
+Total population is scaled to N = 100 (DLM 2005 §I pins it at 6; the
+simulator scales up for a thicker order book while keeping the R = 4
+round structure and the round-4 replacement fractions). DLM uses
 homogeneous human subjects with no algorithmic agent types
 (Fundamentalist/Trend/Random are not part of the DLM design). All
-six slots are utility agents; the only composition knob is the
+100 slots are utility agents; the only composition knob is the
 risk-preference split (αL/αN/αA).
 
 ## Paradigms
@@ -192,13 +194,13 @@ sampling pipeline and a different set of visible controls.
 
 | Paradigm    | Composition                                         | Purpose                                                         |
 |-------------|-----------------------------------------------------|-----------------------------------------------------------------|
-| Strict-DLM  | 6 `DLMTrader`, 3 × type A + 3 × type B              | Exact replication of Dufwenberg–Lindqvist–Moore (2005)          |
-| Lopez-Lira  | 6 `UtilityAgent` (strategy cube over bias/belief/risk) | Expected-utility messaging market from Lopez-Lira (2025)     |
+| Strict-DLM  | 100 `DLMTrader`, 50 × type A + 50 × type B          | Scaled replication of Dufwenberg–Lindqvist–Moore (2005)         |
+| Lopez-Lira  | 100 `UtilityAgent` (strategy cube over bias/belief/risk) | Expected-utility messaging market from Lopez-Lira (2025)   |
 | AIPE        | Utility block + fixed F/T/R background              | AI-Agent Prior Elicitation on top of the Lopez-Lira model       |
 
 The paradigm table above is the conceptual decomposition, but at
 runtime the simulator always uses `sampleAgents(mix, rng, options)`
-with 6 `UtilityAgent` slots. The T2/T4 treatment selector in Trade
+with 100 `UtilityAgent` slots. The T20/T40 treatment selector in Trade
 Settings controls the round-4 replacement size.
 
 **10-session batch.** One press of Start runs 10 sessions animated
@@ -210,10 +212,12 @@ metrics labeled `R{r}_S{s}` into `App.batchResults` (40 rows total:
 Experiment tab) renders these rows with per-treatment aggregates.
 Pause stops the chain via `_batchRunning = false`.
 
-The shorthand T2/T4 maps onto DLM's own convention: **T2 ↔ R4-⅔**
-(two fresh replacements, four veterans, two-thirds experienced) and
-**T4 ↔ R4-⅓** (four fresh replacements, two veterans, one-third
-experienced).
+The shorthand T20/T40 preserves DLM's R4-⅔ / R4-⅓ labelling at
+N = 100: **T20 ↔ R4-⅔** (20 fresh replacements, 80 veterans) and
+**T40 ↔ R4-⅓** (40 fresh replacements, 60 veterans). The DLM
+⅔ / ⅓ fractions refer to the original 6-subject design and are
+kept as names; at N = 100 the actual remaining-veteran fractions
+are 80/100 and 60/100 respectively.
 
 Session payoff for agent `i` is
 `π_i = Σ_r roundFinalCash[r-1][i] + 500¢` (the show-up fee), captured

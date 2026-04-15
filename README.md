@@ -31,7 +31,7 @@ external libraries. Open `index.html` in any modern browser to run.
   three risk preferences — `U(w) = w²` (loving), `U(w) = w` (neutral), or
   `U(w) = √w` (averse) — and can optionally exchange messages, track trust in
   its peers, and lie about its valuation.
-- On the default population the app boots with **6 Utility agents** so every
+- On the default population the app boots with **100 Utility agents** so every
   extended panel (messaging, deception, trust) is reachable out of the box. The
   slider-driven mix reproduces the paper's classic bubble-under-inexperienced
   and convergence-under-experienced regimes as well.
@@ -116,7 +116,7 @@ to a recorded length.
 
 | Preset          | Composition                       | Expected outcome           |
 |-----------------|-----------------------------------|----------------------------|
-| Utility         | 6 Utility                         | Default on first load      |
+| Utility         | 100 Utility                       | Default on first load      |
 | Inexperienced   | 2 Trend · 2 Random · 1 F · 1 E    | Classic bubble + crash     |
 | Experienced     | 3 Experienced · 2 Fund · 1 Trend  | Tight convergence to FV    |
 | Mixed           | 2 Fund · 2 Exp · 1 Trend · 1 Rand | Closest tracking of FV     |

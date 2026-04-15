@@ -50,19 +50,20 @@ const App = {
     ticksPerFrame:    1,
   },
 
-  // Total population size, fixed at N = 6 per DLM 2005 §I.
-  // Not user-adjustable — the paper pins six subjects and all
-  // results are calibrated to this market size.
-  TOTAL_N: 6,
+  // Total population size, scaled to N = 100 (was fixed at 6 per
+  // DLM 2005 §I; the scaled-up regime keeps the same round-4
+  // treatment fractions while giving the order book a thicker
+  // population).
+  TOTAL_N: 100,
 
   // Population composition — feeds the sampling stage in agents.js.
-  // Total N is pinned at 6. F (Fundamentalist) and T (Trend follower)
+  // Total N is pinned at 100. F (Fundamentalist) and T (Trend follower)
   // are user-adjustable via sliders (can be 0 for a pure utility-agent
-  // market); U is derived as TOTAL_N − F − T so all six slots are
+  // market); U is derived as TOTAL_N − F − T so all 100 slots are
   // always filled. F and T provide the initial price heterogeneity
   // that bootstraps non-degenerate trading under Plan I's DLM belief
   // model (prior = FV, peer-message blend with experience weight w).
-  mix: { F: 0, T: 0, R: 0, U: 6 },
+  mix: { F: 0, T: 0, R: 0, U: 100 },
 
   // Simulator-invented numeric constants consumed by the engine and
   // utility agents. None of these are proposed by DLM 2005 (which
@@ -98,9 +99,10 @@ const App = {
   // or API failure, Plans II and III fall back to Plan I's algorithm.
   plan: 'I',
 
-  // DLM treatment size for the round-4 replacement step. 2 = T2
-  // (R4-⅔, two fresh), 4 = T4 (R4-⅓, four fresh).
-  treatmentSize: 2,
+  // DLM treatment size for the round-4 replacement step (scaled to
+  // N = 100). 20 = T20 (R4-⅔, 20 fresh, 80 veterans remain),
+  // 40 = T40 (R4-⅓, 40 fresh, 60 veterans remain).
+  treatmentSize: 20,
 
   // Session counter for the 10-session batch. 0 = idle/pre-run,
   // 1-10 during a batch. Updated by start() at every session
@@ -329,7 +331,7 @@ const App = {
     });
     this._syncPlanButtons();
 
-    // DLM treatment radio buttons (T2 / T4).
+    // DLM treatment radio buttons (T20 / T40).
     document.querySelectorAll('input[name="dlm-treatment"]').forEach(radio => {
       radio.addEventListener('change', e => {
         this.treatmentSize = Number(e.target.value);
@@ -871,7 +873,7 @@ const App = {
       // Populated asynchronously by the engine's comms round when
       // plan ∈ {II, III}, consumed next tick by decide().
       llmActions:    {},
-      // Round-4 replacement: 2 (T2/R4-⅔) or 4 (T4/R4-⅓).
+      // Round-4 replacement: 20 (T20/R4-⅔) or 40 (T40/R4-⅓).
       treatmentSize: this.treatmentSize,
       // Current session number (1-10) for the batch display.
       currentSession: this.currentSession,
@@ -930,7 +932,7 @@ const App = {
 
     const SESSIONS = 10;
     const firstTreatment  = this.treatmentSize;
-    const secondTreatment = firstTreatment === 2 ? 4 : 2;
+    const secondTreatment = firstTreatment === 20 ? 40 : 20;
     this.batchResults = [];
     this._exportSessions = [];
     this._batchRunning = true;
@@ -959,7 +961,7 @@ const App = {
       this.ctx.currentSession = this.currentSession;
 
       const sessionNum  = s + 1;
-      const txLabel     = treatment === 2 ? 'T2' : 'T4';
+      const txLabel     = treatment === 20 ? 'T20' : 'T40';
       const totalShares = this.TOTAL_N * 3;
 
       // Collect one round's metrics as soon as it finishes, so Table 2
@@ -1050,7 +1052,7 @@ const App = {
 
     return {
       session:    sessionNum,
-      treatment:  this.treatmentSize === 2 ? 'T2' : 'T4',
+      treatment:  this.treatmentSize === 20 ? 'T20' : 'T40',
       plan:       this.plan,
       seed:       this.seed,
       agentSpecs: (this._sessionOriginalSpecs || this.agentSpecs).map(s => ({ ...s })),

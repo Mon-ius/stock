@@ -270,9 +270,9 @@ class Engine {
    * At the round 3→4 boundary the engine randomly selects
    * `treatmentSize` experienced agents, removes them, and splices in
    * the same number of fresh agents (roundsPlayed = 0,
-   * replacementFresh = true). Treatment sizes:
-   *   T2 (R4-⅔) — 2 replaced, 4 veterans remain.
-   *   T4 (R4-⅓) — 4 replaced, 2 veterans remain.
+   * replacementFresh = true). Treatment sizes (N = 100 scale):
+   *   T20 (R4-⅔) — 20 replaced, 80 veterans remain.
+   *   T40 (R4-⅓) — 40 replaced, 60 veterans remain.
    *
    * Replacement agents are cloned from the removed agent's spec and
    * re-instantiated via buildAgentsFromSpecs so they match the
