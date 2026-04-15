@@ -1472,6 +1472,13 @@ const UI = {
     const cellW = rect.w / n;
     const cellH = rect.h / n;
     const trust = v.trust || null;
+    // With sub-pixel cells (N = 100 → ~2-3 px) the 1-px grid inset
+    // would produce negative-sized fillRects that draw backwards and
+    // leave half the matrix blank. Only apply the inset once cells are
+    // thick enough to show a gap.
+    const inset = (cellW >= 4 && cellH >= 4) ? 1 : 0;
+    const cw    = Math.max(0.5, cellW - inset * 2);
+    const ch    = Math.max(0.5, cellH - inset * 2);
 
     for (let i = 0; i < n; i++) {          // i = receiver (row)
       for (let j = 0; j < n; j++) {        // j = sender   (col)
@@ -1482,10 +1489,10 @@ const UI = {
         const y = rect.y + i * cellH;
         if (r === s) {
           ctx.fillStyle = this.theme.stripe;
-          ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+          ctx.fillRect(x + inset, y + inset, cw, ch);
         } else {
           ctx.fillStyle = Viz.heatColor(val);
-          ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+          ctx.fillRect(x + inset, y + inset, cw, ch);
           if (cellW > 24 && cellH > 18) {
             ctx.fillStyle = this.theme.fg0;
             ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';

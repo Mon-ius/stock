@@ -1446,7 +1446,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .chart-utility canvas,
 .chart-ownership canvas { height: 200px; }
 .chart-messages canvas { height: 200px; }
-.chart-trust canvas    { height: 220px; }
+.chart-trust canvas    { height: 360px; }
 
 /* ---------- Order book ------------------------------------------
  * Mirrors the .panel-feed treatment: the panel is a flex column so
@@ -2289,7 +2289,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .chart-utility canvas,
   .chart-ownership canvas { height: 170px; }
   .chart-messages canvas { height: 170px; }
-  .chart-trust canvas    { height: 180px; }
+  .chart-trust canvas    { height: 280px; }
 
   /* Agent cards: single column so nothing clips on narrow screens */
   .agents-grid { grid-template-columns: 1fr; gap: 8px; }
