@@ -92,6 +92,62 @@ const UI = {
   // Agent ids whose card is currently flipped to the back face.
   _flipped: new Set(),
 
+  // Population threshold above which per-agent chart modes switch to
+  // aggregated variants (fan chart, risk-group stacks, sparse axis
+  // labels). 12 is the point at which per-line palettes and name-per-
+  // row labels start overlapping on typical chart widths.
+  FAN_THRESHOLD: 12,
+
+  /**
+   * Parse a CSS color token (rgb / rgba / #rrggbb) into {r,g,b,a}.
+   * Returns null for formats we don't handle (unlikely — theme tokens
+   * are always in one of the three). Used only by _fanColor to build
+   * alpha variants of the theme's accent for fan bands.
+   */
+  _parseColor(s) {
+    if (typeof s !== 'string') return null;
+    const m = s.match(/^rgba?\(([^)]+)\)$/i);
+    if (m) {
+      const parts = m[1].split(',').map(v => v.trim());
+      return {
+        r: +parts[0], g: +parts[1], b: +parts[2],
+        a: parts[3] != null ? +parts[3] : 1,
+      };
+    }
+    if (/^#[0-9a-f]{6}$/i.test(s)) {
+      return {
+        r: parseInt(s.slice(1, 3), 16),
+        g: parseInt(s.slice(3, 5), 16),
+        b: parseInt(s.slice(5, 7), 16),
+        a: 1,
+      };
+    }
+    if (/^#[0-9a-f]{3}$/i.test(s)) {
+      return {
+        r: parseInt(s[1] + s[1], 16),
+        g: parseInt(s[2] + s[2], 16),
+        b: parseInt(s[3] + s[3], 16),
+        a: 1,
+      };
+    }
+    return null;
+  },
+
+  /** Lighten a theme color to the given alpha for use as a fan band fill. */
+  _fanColor(base, alpha) {
+    const c = this._parseColor(base);
+    if (!c) return `rgba(120,140,180,${alpha})`;
+    return `rgba(${c.r},${c.g},${c.b},${alpha})`;
+  },
+
+  /** Semantic color for a risk preference (drives aggregated ownership bands). */
+  _riskColor(riskPref) {
+    if (riskPref === 'loving')  return this.theme.red;
+    if (riskPref === 'averse')  return this.theme.green;
+    if (riskPref === 'neutral') return this.theme.teal;
+    return this.theme.fg2;
+  },
+
   init() {
     this.refreshTheme();
     // Stat cells
@@ -993,17 +1049,20 @@ const UI = {
     if (!this.charts.timeline) return;
     const { ctx, width, height } = this.charts.timeline;
     Viz.clear(ctx, width, height);
-    // padL 66: wide enough for the longest agent name (e.g. "Quinn").
-    const rect = Viz.plotRect(width, height, 66, 14, 16, 38);
+    const ids     = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const nA      = Math.max(1, ids.length);
+    const compact = nA > UI.FAN_THRESHOLD;
+    // Large populations drop the per-row name gutter (unreadable at
+    // rowH ≈ 2–3 px) and a few sparse tick labels take its place.
+    const padL    = compact ? 30 : 66;
+    const rect    = Viz.plotRect(width, height, padL, 14, 16, 38);
 
     const rounds         = config.roundsPerSession || 1;
     const sessionPeriods = rounds * config.periods;
     const totalTicks     = sessionPeriods * config.ticksPerPeriod;
-    const ids            = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
-    const nA             = Math.max(1, ids.length);
     const rowH           = rect.h / nA;
 
-    // Row backgrounds + names.
+    // Row backgrounds + (optional) agent name labels.
     ctx.save();
     ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
@@ -1014,8 +1073,19 @@ const UI = {
         ctx.fillStyle = this.theme.stripe;
         ctx.fillRect(rect.x, y, rect.w, rowH);
       }
-      ctx.fillStyle = this.agentColor(ids[i]);
-      ctx.fillText(v.agents[ids[i]]?.name || ('A' + ids[i]), rect.x - 6, y + rowH / 2);
+      if (!compact) {
+        ctx.fillStyle = this.agentColor(ids[i]);
+        ctx.fillText(v.agents[ids[i]]?.name || ('A' + ids[i]), rect.x - 6, y + rowH / 2);
+      }
+    }
+    if (compact) {
+      // Sparse y-axis ticks: first, last, and every ~10% of the roster.
+      ctx.fillStyle = this.theme.fg3;
+      const stride = Math.max(1, Math.floor(nA / 10));
+      for (let i = 0; i < nA; i += stride) {
+        ctx.fillText('#' + ids[i], rect.x - 6, rect.y + (i + 0.5) * rowH);
+      }
+      ctx.fillText('#' + ids[nA - 1], rect.x - 6, rect.y + (nA - 0.5) * rowH);
     }
     ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
@@ -1129,17 +1199,35 @@ const UI = {
 
     this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
-    // One subjective-valuation line per agent.
-    const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
-    for (const id of ids) {
-      Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.agentColor(id), width: 1.6 });
+    // Small populations (≤ 12) render one line per agent with a per-
+    // agent legend. For larger populations the per-agent traces
+    // degenerate to visual noise, so collapse the population into a
+    // fan chart (P10/P90 envelope + P25/P75 IQR + median).
+    const ids     = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
+    const nAgents = Object.keys(v.agents || {}).length || ids.length;
+    const useFan  = nAgents > UI.FAN_THRESHOLD;
+
+    if (useFan) {
+      const buckets = Viz.bucketByX(hist, 'tick', 'subjV');
+      Viz.fanChart(ctx, rect, buckets, {
+        xMin: 0, xMax: totalTicks, yMin: 0, yMax,
+        colorEnv:    this._fanColor(this.theme.accent, 0.14),
+        colorIQR:    this._fanColor(this.theme.accent, 0.30),
+        colorMedian: this.theme.accent,
+        widthMedian: 2,
+      });
+    } else {
+      for (const id of ids) {
+        Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.agentColor(id), width: 1.6 });
+      }
     }
 
     // Reported-valuation markers. Deceptive messages are ringed red
     // and connected to the sender's true valuation by a dotted line,
-    // so you can see the "lie gap" directly.
+    // so you can see the "lie gap" directly. Skipped in fan mode where
+    // thousands of dots would swamp the IQR signal.
     const msgs = v.messages || [];
-    if (msgs.length) {
+    if (!useFan && msgs.length) {
       ctx.save();
       for (const m of msgs) {
         const x     = Viz.mapX(rect, m.tick, 0, totalTicks);
@@ -1173,12 +1261,17 @@ const UI = {
       legendX += ctx.measureText(label).width + gap;
     };
     drawEntry('▬ FVₜ', this.theme.amber);
-    drawEntry('▬ V̂ᵢ,ₜ', this.theme.fg2);
-    for (const id of ids) {
-      const name = v.agents[id] ? v.agents[id].name : 'U' + id;
-      drawEntry('● ' + name, this.agentColor(id));
+    if (useFan) {
+      drawEntry('▬ median V̂ᵢ,ₜ', this.theme.accent);
+      drawEntry('▮ IQR · envelope', this._fanColor(this.theme.accent, 0.50));
+    } else {
+      drawEntry('▬ V̂ᵢ,ₜ', this.theme.fg2);
+      for (const id of ids) {
+        const name = v.agents[id] ? v.agents[id].name : 'U' + id;
+        drawEntry('● ' + name, this.agentColor(id));
+      }
+      drawEntry('○ Ṽ ≠ V̂  (lie gap)', this.theme.red);
     }
-    drawEntry('○ Ṽ ≠ V̂  (lie gap)', this.theme.red);
     ctx.restore();
 
     Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
@@ -1229,9 +1322,37 @@ const UI = {
 
     this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
-    const ids = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
-    for (const id of ids) {
-      Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
+    // Large populations collapse into a fan chart (same shape as the
+    // valuation chart); small populations keep per-agent lines.
+    const ids     = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
+    const nAgents = Object.keys(v.agents || {}).length || ids.length;
+    if (nAgents > UI.FAN_THRESHOLD) {
+      const buckets = Viz.bucketByX(hist, 'tick', 'utility');
+      Viz.fanChart(ctx, rect, buckets, {
+        xMin: 0, xMax: totalTicks, yMin, yMax,
+        colorEnv:    this._fanColor(this.theme.accent, 0.14),
+        colorIQR:    this._fanColor(this.theme.accent, 0.30),
+        colorMedian: this.theme.accent,
+        widthMedian: 2,
+      });
+      ctx.save();
+      ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.textBaseline = 'middle';
+      const y = rect.y + 12;
+      let legendX = rect.x + 10;
+      const drawEntry = (label, color) => {
+        ctx.fillStyle = color;
+        ctx.fillText(label, legendX, y);
+        legendX += ctx.measureText(label).width + 12;
+      };
+      drawEntry('▬ median Uᵢ(w)', this.theme.accent);
+      drawEntry('▮ IQR · envelope', this._fanColor(this.theme.accent, 0.50));
+      drawEntry('⋯ U = 1 (initial)', this.theme.fg3);
+      ctx.restore();
+    } else {
+      for (const id of ids) {
+        Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
+      }
     }
 
     Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
@@ -1243,13 +1364,16 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 66, 14, 16, 38);
+
+    const ids     = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const nA      = Math.max(1, ids.length);
+    const compact = nA > UI.FAN_THRESHOLD;
+    const padL    = compact ? 30 : 66;
+    const rect    = Viz.plotRect(width, height, padL, 14, 16, 38);
 
     const rounds         = config.roundsPerSession || 1;
     const sessionPeriods = rounds * config.periods;
     const totalTicks     = sessionPeriods * config.ticksPerPeriod;
-    const ids            = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
-    const nA             = Math.max(1, ids.length);
     const rowH           = rect.h / nA;
 
     ctx.save();
@@ -1262,9 +1386,19 @@ const UI = {
         ctx.fillStyle = this.theme.stripe;
         ctx.fillRect(rect.x, y, rect.w, rowH);
       }
-      ctx.fillStyle = this.agentColor(ids[i]);
-      const name = v.agents[ids[i]] ? v.agents[ids[i]].name : 'U' + ids[i];
-      ctx.fillText(name, rect.x - 6, y + rowH / 2);
+      if (!compact) {
+        ctx.fillStyle = this.agentColor(ids[i]);
+        const name = v.agents[ids[i]] ? v.agents[ids[i]].name : 'U' + ids[i];
+        ctx.fillText(name, rect.x - 6, y + rowH / 2);
+      }
+    }
+    if (compact) {
+      ctx.fillStyle = this.theme.fg3;
+      const stride = Math.max(1, Math.floor(nA / 10));
+      for (let i = 0; i < nA; i += stride) {
+        ctx.fillText('#' + ids[i], rect.x - 6, rect.y + (i + 0.5) * rowH);
+      }
+      ctx.fillText('#' + ids[nA - 1], rect.x - 6, rect.y + (nA - 0.5) * rowH);
     }
     ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
@@ -1323,11 +1457,17 @@ const UI = {
     if (!chart) return;
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
-    const rect = Viz.plotRect(width, height, 66, 12, 14, 44);
 
     const agentIds = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
     const n = agentIds.length;
     if (!n) return;
+    // Large rosters show numeric id ticks every ~10th agent instead of
+    // a solid name wall down each axis (which would be illegible at
+    // cellH ≈ 3 px).
+    const compact = n > UI.FAN_THRESHOLD;
+    const padL    = compact ? 30 : 66;
+    const padB    = compact ? 30 : 44;
+    const rect    = Viz.plotRect(width, height, padL, 12, 14, padB);
 
     const cellW = rect.w / n;
     const cellH = rect.h / n;
@@ -1365,15 +1505,29 @@ const UI = {
     ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    for (let i = 0; i < n; i++) {
-      const name = v.agents[agentIds[i]] ? v.agents[agentIds[i]].name : 'U' + agentIds[i];
-      ctx.fillText(name, rect.x - 4, rect.y + i * cellH + cellH / 2);
+    if (compact) {
+      const stride = Math.max(1, Math.floor(n / 10));
+      for (let i = 0; i < n; i += stride) {
+        ctx.fillText('#' + agentIds[i], rect.x - 4, rect.y + (i + 0.5) * cellH);
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const name = v.agents[agentIds[i]] ? v.agents[agentIds[i]].name : 'U' + agentIds[i];
+        ctx.fillText(name, rect.x - 4, rect.y + i * cellH + cellH / 2);
+      }
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    for (let j = 0; j < n; j++) {
-      const name = v.agents[agentIds[j]] ? v.agents[agentIds[j]].name : 'U' + agentIds[j];
-      ctx.fillText(name, rect.x + j * cellW + cellW / 2, rect.y + rect.h + 6);
+    if (compact) {
+      const stride = Math.max(1, Math.floor(n / 10));
+      for (let j = 0; j < n; j += stride) {
+        ctx.fillText('#' + agentIds[j], rect.x + (j + 0.5) * cellW, rect.y + rect.h + 6);
+      }
+    } else {
+      for (let j = 0; j < n; j++) {
+        const name = v.agents[agentIds[j]] ? v.agents[agentIds[j]].name : 'U' + agentIds[j];
+        ctx.fillText(name, rect.x + j * cellW + cellW / 2, rect.y + rect.h + 6);
+      }
     }
     ctx.restore();
 
@@ -1452,11 +1606,51 @@ const UI = {
       invByTick[tick] = cur;
     }
 
-    const series = ids.map(id => ({
-      color: this.agentColor(id),
-      name:  v.agents[id] ? v.agents[id].name : 'U' + id,
-      points: invByTick.map((m, tick) => ({ x: tick, y: Math.max(0, m[id] || 0) })),
-    }));
+    // At small N keep one band per agent (colored distinctly). At
+    // large N group agents by risk preference so the stack reduces to
+    // 3 semantically-meaningful bands (loving / neutral / averse) plus
+    // an "other" fallback for any non-Utility types. The legend is
+    // the only way a stacked area communicates composition and 100
+    // per-agent legend entries are unreadable.
+    const compact = n > UI.FAN_THRESHOLD;
+    let series;
+    if (compact) {
+      const groups = [
+        { key: 'loving',  color: this._riskColor('loving'),  label: 'risk-loving' },
+        { key: 'neutral', color: this._riskColor('neutral'), label: 'risk-neutral' },
+        { key: 'averse',  color: this._riskColor('averse'),  label: 'risk-averse' },
+        { key: 'other',   color: this.theme.fg3,             label: 'other' },
+      ];
+      const groupOf = id => {
+        const a = v.agents[id];
+        if (a && a.riskPref && ['loving','neutral','averse'].includes(a.riskPref)) return a.riskPref;
+        return 'other';
+      };
+      const idGroup = {};
+      const groupHas = { loving: false, neutral: false, averse: false, other: false };
+      for (const id of ids) {
+        const g = groupOf(id);
+        idGroup[id] = g;
+        groupHas[g] = true;
+      }
+      series = groups
+        .filter(g => groupHas[g.key])
+        .map(g => ({
+          color:  g.color,
+          name:   g.label,
+          points: invByTick.map((m, tick) => {
+            let y = 0;
+            for (const id of ids) if (idGroup[id] === g.key) y += Math.max(0, m[id] || 0);
+            return { x: tick, y };
+          }),
+        }));
+    } else {
+      series = ids.map(id => ({
+        color: this.agentColor(id),
+        name:  v.agents[id] ? v.agents[id].name : 'U' + id,
+        points: invByTick.map((m, tick) => ({ x: tick, y: Math.max(0, m[id] || 0) })),
+      }));
+    }
     Viz.stackedArea(ctx, rect, series, { xMin: 0, xMax: totalTicks, yMin: 0, yMax });
     this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 

@@ -242,6 +242,104 @@ const Viz = {
     }
   },
 
+  /**
+   * Bucket a flat list of rows by an x key so each bucket carries the
+   * y values from every agent at that x. Used by fan-chart callers to
+   * collapse a "history[]" stream into a per-tick population slice
+   * before computing quantiles.
+   *
+   *   rows  — [{ [xKey]: number, [yKey]: number, ... }]
+   *   xKey  — the tick / period field name
+   *   yKey  — the value field name (e.g. 'subjV', 'utility')
+   *   → [{ x, ys: number[] }] sorted by x ascending
+   */
+  bucketByX(rows, xKey, yKey) {
+    const buckets = new Map();
+    for (const row of rows) {
+      const x = row[xKey];
+      const y = row[yKey];
+      if (x == null || y == null || Number.isNaN(y)) continue;
+      let b = buckets.get(x);
+      if (!b) { b = { x, ys: [] }; buckets.set(x, b); }
+      b.ys.push(y);
+    }
+    return [...buckets.values()].sort((a, b) => a.x - b.x);
+  },
+
+  /**
+   * Fan chart — population distribution over time. For each x-bucket,
+   * shades the 10/90 envelope, the 25/75 IQR, and draws the median line.
+   * Designed as a drop-in replacement for dozens of overlapping per-agent
+   * `line()` calls when the population is large (N > ~12) and individual
+   * traces degenerate to visual noise.
+   *
+   *   buckets — [{ x, ys: number[] }] (usually from bucketByX).
+   *   opts    — { xMin, xMax, yMin, yMax, colorEnv, colorIQR,
+   *              colorMedian, widthMedian }
+   */
+  fanChart(ctx, rect, buckets, opts) {
+    if (!buckets || !buckets.length) return;
+    const { xMin, xMax, yMin, yMax } = opts;
+    const colorEnv    = opts.colorEnv    || 'rgba(120,140,180,0.18)';
+    const colorIQR    = opts.colorIQR    || 'rgba(120,140,180,0.35)';
+    const colorMedian = opts.colorMedian || '#445';
+    const widthMedian = opts.widthMedian != null ? opts.widthMedian : 2;
+
+    const quantile = (sorted, q) => {
+      if (!sorted.length) return null;
+      const pos = (sorted.length - 1) * q;
+      const lo  = Math.floor(pos);
+      const hi  = Math.ceil(pos);
+      if (lo === hi) return sorted[lo];
+      return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+    };
+
+    const stats = [];
+    for (const b of buckets) {
+      if (!b.ys.length) continue;
+      const ys = b.ys.slice().sort((a, z) => a - z);
+      stats.push({
+        x:   b.x,
+        p10: quantile(ys, 0.10),
+        p25: quantile(ys, 0.25),
+        p50: quantile(ys, 0.50),
+        p75: quantile(ys, 0.75),
+        p90: quantile(ys, 0.90),
+      });
+    }
+    if (!stats.length) return;
+
+    const drawBand = (getLow, getHigh, fill) => {
+      ctx.save();
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      for (let i = 0; i < stats.length; i++) {
+        const s = stats[i];
+        const x = this.mapX(rect, s.x, xMin, xMax);
+        const y = this.mapY(rect, getHigh(s), yMin, yMax);
+        if (i === 0) ctx.moveTo(x, y);
+        else         ctx.lineTo(x, y);
+      }
+      for (let i = stats.length - 1; i >= 0; i--) {
+        const s = stats[i];
+        const x = this.mapX(rect, s.x, xMin, xMax);
+        const y = this.mapY(rect, getLow(s), yMin, yMax);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+    drawBand(s => s.p10, s => s.p90, colorEnv);
+    drawBand(s => s.p25, s => s.p75, colorIQR);
+
+    this.line(
+      ctx, rect,
+      stats.map(s => ({ x: s.x, y: s.p50 })),
+      { xMin, xMax, yMin, yMax, color: colorMedian, width: widthMedian },
+    );
+  },
+
   /** Scale a value in [0,1] to a cool→hot heat color for the heatmap. */
   heatColor(t) {
     t = Math.max(0, Math.min(1, t));

@@ -1539,7 +1539,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 /* ---------- Agents ---------- */
 .agents-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* auto-fill keeps columns at a sensible minimum width (~220px) and
+     adds columns as the panel widens — at N = 100 the table breathes
+     across 4-6 columns on typical screens instead of piling 34 rows
+     into a fixed-3-column stack. */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
 }
 .agent-card {
