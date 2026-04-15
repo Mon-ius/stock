@@ -657,6 +657,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .panel-params .params-body {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  /* Each .psec shrinks to its own content height when collapsed; the
+     default `stretch` alignment would keep Trade Settings / Risk
+     Preferences pinned to the tallest sibling in the same grid row
+     and make the fold appear incomplete. */
+  align-items: start;
   gap: 14px;
 }
 @media (max-width: 1100px) {
