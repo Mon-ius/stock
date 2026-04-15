@@ -685,6 +685,13 @@ const App = {
     this.TOTAL_N = n;
     this.mix = { F: 0, T: 0, R: 0, U: n };
 
+    // Body class drives CSS overrides that rescale the canvases
+    // whose default heights were tuned for the 100×100 regime
+    // (chart-trust in particular). Every other chart branches on
+    // nAgents > UI.FAN_THRESHOLD in its own renderer and so adapts
+    // automatically on the next requestRender().
+    document.body.classList.toggle('n-small', n === 6);
+
     const tx = this._treatmentsFor(n);
     this.treatmentSize = tx.small;
 

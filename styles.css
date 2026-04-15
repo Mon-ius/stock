@@ -1455,6 +1455,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .chart-ownership canvas { height: 200px; }
 .chart-messages canvas { height: 200px; }
 .chart-trust canvas    { height: 420px; }
+/* At N = 6 the trust matrix is 6×6 with per-agent name labels, so
+   the 420 px canvas built for the 100×100 regime leaves a huge
+   empty strip below the cells. Shrink to a square-ish 240 px box
+   when body.n-small is active (set by App.setTotalN). */
+body.n-small .chart-trust canvas { height: 240px; }
 
 /* ---------- Order book ------------------------------------------
  * Mirrors the .panel-feed treatment: the panel is a flex column so
@@ -1562,6 +1567,10 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   overflow-y: auto;
   padding-right: 4px;
 }
+/* N = 6 only has 6 cards — the scroll cap is unnecessary and the
+   empty right-hand gutter looks out of place, so show all six in
+   place. */
+body.n-small .agents-grid { max-height: none; overflow-y: visible; padding-right: 0; }
 .agent-card {
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -2310,6 +2319,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .chart-ownership canvas { height: 170px; }
   .chart-messages canvas { height: 170px; }
   .chart-trust canvas    { height: 320px; }
+  body.n-small .chart-trust canvas { height: 200px; }
 
   /* Agent cards: single column so nothing clips on narrow screens.
      At one column per row, cap visible area to 3 cards (~120 px each
