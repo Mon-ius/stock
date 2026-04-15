@@ -1545,6 +1545,13 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
      into a fixed-3-column stack. */
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
+  /* Cap the visible area to ~3 rows of cards and scroll the rest. One
+     card is roughly 120 px tall (header + metrics + last-action row),
+     so 3 rows + 2 gutters ≈ 380 px. Without this the 100-agent roster
+     pushes every other panel below the fold. */
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .agent-card {
   background: var(--bg-2);
@@ -2291,8 +2298,14 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .chart-messages canvas { height: 170px; }
   .chart-trust canvas    { height: 280px; }
 
-  /* Agent cards: single column so nothing clips on narrow screens */
-  .agents-grid { grid-template-columns: 1fr; gap: 8px; }
+  /* Agent cards: single column so nothing clips on narrow screens.
+     At one column per row, cap visible area to 3 cards (~110 px each
+     + 2 × 8 px gutters ≈ 346 px). */
+  .agents-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    max-height: 346px;
+  }
   .agent-card { padding: 10px 12px; }
   .agent-card .agent-name { font-size: 12px; }
 
