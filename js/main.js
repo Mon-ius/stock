@@ -31,8 +31,9 @@ const App = {
   //                             the header Speed slider. Zero effect
   //                             on market dynamics.
   // DLM 2005 unit of study is a *session* of four consecutive markets
-  // ("rounds") with six traders sharing the same population across
-  // rounds 1-3 and a mixed-experience swap in round 4. One round lasts
+  // ("rounds") with the same population sharing across rounds 1-3 (the
+  // paper pins it at six traders; this simulator scales to one hundred)
+  // and a mixed-experience swap in round 4. One round lasts
   // ten periods with a {0,20}¢ i.i.d. dividend, so an entire session
   // is roundsPerSession × periods × ticksPerPeriod = 720 ticks by
   // default. The three numbers below are DLM paper constants and are

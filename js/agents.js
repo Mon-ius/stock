@@ -283,9 +283,9 @@ class RandomAgent extends Agent {
  *
  *   roundsPlayed === 0  → bubble-prone behaviour: trend-following on
  *                         the in-round price history, weak FV anchor,
- *                         no late-period liquidation. Six fresh agents
- *                         in round 1 of every session reproduce the
- *                         classic SSW bubble-and-crash.
+ *                         no late-period liquidation. A full roster of
+ *                         fresh agents in round 1 of every session
+ *                         reproduces the classic SSW bubble-and-crash.
  *
  *   roundsPlayed >= 1   → FV-anchoring veteran behaviour: discounts
  *                         belief by horizon fraction, liquidates in
