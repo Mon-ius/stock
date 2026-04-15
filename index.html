@@ -33,6 +33,24 @@
     <div class="params-body">
 
       <details class="psec" open>
+        <summary>Session</summary>
+        <div class="psec-body">
+          <div class="param-row">
+            <div class="param-head"><label for="p-rounds">Rounds / session</label><span class="pval" id="v-rounds">4</span></div>
+            <input type="range" id="p-rounds" min="1" max="8" step="1" value="4">
+          </div>
+          <div class="param-row">
+            <div class="param-head"><label for="p-periods">Periods / round</label><span class="pval" id="v-periods">10</span></div>
+            <input type="range" id="p-periods" min="3" max="20" step="1" value="10">
+          </div>
+          <div class="param-row">
+            <div class="param-head"><label for="p-tpp">Ticks / period</label><span class="pval" id="v-tpp">18</span></div>
+            <input type="range" id="p-tpp" min="6" max="40" step="1" value="18">
+          </div>
+        </div>
+      </details>
+
+      <details class="psec" open>
         <summary>Population</summary>
         <div class="psec-body">
           <div class="param-row">

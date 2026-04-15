@@ -187,6 +187,11 @@ const App = {
   _wireParams() {
     const T = this.tunables;
 
+    // Session (rounds / periods / ticks-per-period)
+    this._slider('p-rounds',  'v-rounds',  this.config.roundsPerSession, 1, 8,  1, (v) => { this.config.roundsPerSession = v; this.rebuild(); });
+    this._slider('p-periods', 'v-periods', this.config.periods,          3, 20, 1, (v) => { this.config.periods          = v; this.rebuild(); });
+    this._slider('p-tpp',     'v-tpp',     this.config.ticksPerPeriod,   6, 40, 1, (v) => { this.config.ticksPerPeriod   = v; this.rebuild(); });
+
     this._slider('p-N', 'v-N', T.N, 6, 200, 1, (v) => { T.N = v; this.agentSpecs = null; this.rebuild(); });
 
     // HMM
