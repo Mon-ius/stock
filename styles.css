@@ -1,6 +1,10 @@
 /* ======================================================================
-   Virtual Trading Plus — counterfactual UI.
-   Single flat stylesheet, no framework. Light/dark via data-theme auto.
+   Virtual Trading Platform — follows the lying project's color system
+   (Modern Scientific Dashboard). Light theme by default with a
+   [data-theme="dark"] override; [data-theme="auto"] tracks
+   prefers-color-scheme. Domain aliases (--fv, --bubble, --volume,
+   --bid, --ask, --hold) point at the base palette so every theme
+   toggle flows through the existing rules automatically.
    ====================================================================== */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -8,222 +12,3146 @@
 :root {
   --bg-0: #fafbfc; --bg-1: #ffffff; --bg-2: #f4f5f7; --bg-3: #e8eaed;
   --fg-0: #1a1d23; --fg-1: #3d4250; --fg-2: #6b7080; --fg-3: #9aa0ad;
-  --muted: #9aa0ad;
   --border: #dfe1e6;
-  --accent: #2563eb; --accent-light: #dbeafe;
-  --red: #dc2626; --green: #16a34a; --amber: #d97706; --purple: #7c3aed;
-  --frame: #c6cad1;
-  --grid: rgba(0,0,0,0.06);
+  --accent: #2563eb; --accent-light: #dbeafe; --accent-dark: #1d4ed8;
+  --red: #dc2626; --red-bg: #fef2f2;
+  --green: #16a34a; --green-bg: #f0fdf4;
+  --amber: #d97706; --amber-bg: #fffbeb;
+  --blue: #2563eb; --blue-bg: #eff6ff;
+  --purple: #7c3aed; --purple-bg: #f5f3ff;
+  --teal: #0d9488; --teal-bg: #f0fdfa;
+  --pink: #db2777; --pink-bg: #fdf2f8;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
   --shadow-md: 0 4px 12px rgba(0,0,0,.07);
-  --radius: 10px; --radius-sm: 6px;
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.09);
+  --radius: 10px; --radius-sm: 6px; --radius-lg: 14px;
+  --ease: cubic-bezier(.4,0,.2,1);
+  /* One font stack for the entire UI. Tabular numerics are enabled
+     per-rule via font-variant-numeric so columns stay aligned without
+     needing a monospace fallback. */
   --font-ui: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-mono: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
-}
 
+  /* Domain aliases — every rule in the rest of the file reads these,
+     so a theme switch only needs to change the base tokens above. */
+  --fv:      var(--amber);
+  --bubble:  var(--red);
+  --volume:  var(--green);
+  --bid:     var(--green);
+  --ask:     var(--red);
+  --hold:    var(--fg-3);
+
+  /* Chart scrims — read by the canvas renderers via getComputedStyle
+     so gridlines / alternate-row stripes / period bands adapt to the
+     active theme. Keep these as baseline-on-transparent rgba values. */
+  --chart-grid:   rgba(0,0,0,0.06);
+  --chart-stripe: rgba(0,0,0,0.025);
+  --chart-band:   rgba(0,0,0,0.022);
+  --chart-frame:  #c6cad1;
+}
+[data-theme="dark"] {
+  --bg-0: #0d1117; --bg-1: #161b22; --bg-2: #1c2129; --bg-3: #272d38;
+  --fg-0: #e6edf3; --fg-1: #c9d1d9; --fg-2: #8b949e; --fg-3: #6e7681;
+  --border: #30363d;
+  --accent-light: #1e3a5f;
+  --red-bg: #2d1b1b; --green-bg: #1a2e1a; --amber-bg: #2d2614;
+  --blue-bg: #1a2540; --purple-bg: #231a35; --teal-bg: #142925;
+  --pink-bg: #2b1524;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+  --shadow-md: 0 4px 14px rgba(0,0,0,.35);
+  --shadow-lg: 0 8px 28px rgba(0,0,0,.4);
+  --chart-grid:   rgba(255,255,255,0.06);
+  --chart-stripe: rgba(255,255,255,0.025);
+  --chart-band:   rgba(255,255,255,0.022);
+  --chart-frame:  #2a3344;
+}
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="auto"] {
-    --bg-0:#0d1117; --bg-1:#161b22; --bg-2:#1c2129; --bg-3:#272d38;
-    --fg-0:#e6edf3; --fg-1:#c9d1d9; --fg-2:#8b949e; --fg-3:#6e7681;
-    --muted:#8b949e;
-    --border:#30363d;
-    --frame:#3a4150;
-    --grid:rgba(255,255,255,0.08);
+  [data-theme="auto"] {
+    --bg-0: #0d1117; --bg-1: #161b22; --bg-2: #1c2129; --bg-3: #272d38;
+    --fg-0: #e6edf3; --fg-1: #c9d1d9; --fg-2: #8b949e; --fg-3: #6e7681;
+    --border: #30363d;
+    --accent-light: #1e3a5f;
+    --red-bg: #2d1b1b; --green-bg: #1a2e1a; --amber-bg: #2d2614;
+    --blue-bg: #1a2540; --purple-bg: #231a35; --teal-bg: #142925;
+    --pink-bg: #2b1524;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+    --shadow-md: 0 4px 14px rgba(0,0,0,.35);
+    --shadow-lg: 0 8px 28px rgba(0,0,0,.4);
+    --chart-grid:   rgba(255,255,255,0.06);
+    --chart-stripe: rgba(255,255,255,0.025);
+    --chart-band:   rgba(255,255,255,0.022);
+    --chart-frame:  #2a3344;
   }
 }
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
+  background: var(--bg-0);
+  color: var(--fg-0);
   font-family: var(--font-ui);
   font-size: 13px;
-  color: var(--fg-0);
-  background: var(--bg-0);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
+html { overflow-x: hidden; }
+body { min-height: 100vh; }
 
+h1, h2, h3 { margin: 0; font-weight: 600; }
+.muted { color: var(--fg-2); }
+
+/* ---------- Math (native MathML) ----------
+   Every mathematical symbol in the UI flows through js/mathml.js and
+   renders as a <math> element so the browser's native MathML engine
+   handles sub/sup layout, script sizing, and math-font glyph
+   selection. Defining a single math { ... } rule here guarantees the
+   same symbol looks identical on the agent cards, in the notes, in
+   the figure equation strips, in the table, and anywhere else a
+   Sym.* lookup is embedded. Context-specific rules elsewhere only
+   adjust the font-size; never the sub/sup geometry. */
+math {
+  font-family: "STIX Two Math", "Latin Modern Math", "Cambria Math",
+               "TeX Gyre Termes Math", "XITS Math", "STIX",
+               "Iowan Old Style", "Palatino Linotype", Palatino,
+               "Georgia", "Times New Roman", serif;
+  font-size: 1em;
+  font-style: normal;
+  color: inherit;
+  vertical-align: baseline;
+}
+math[display="inline"] { white-space: nowrap; }
+
+/* ---------- Header ---------- */
 .app-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
   background: var(--bg-1);
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
-.app-header h1 { margin: 0; font-size: 16px; font-weight: 600; }
-.app-header .subtitle { display: block; font-size: 11px; color: var(--fg-2); }
-.controls { display: flex; gap: 8px; }
-.controls button {
-  border: 1px solid var(--border);
-  background: var(--bg-1);
-  color: var(--fg-0);
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  cursor: pointer;
+.title h1   {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, var(--accent), var(--red));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
-.controls button:hover { background: var(--bg-2); }
-.controls button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.title .subtitle {
+  display: block;
+  color: var(--fg-2);
+  font-size: 11px;
+  margin-top: 2px;
+}
 
+/*
+ * Nav tabs — top-level view selector sitting between .title and the
+ * paradigm switch. Modelled on the lying project's .nav-tab pattern:
+ * text-only buttons that turn accent-coloured when active, with a
+ * 2px bottom border used as the active indicator. The non-active
+ * bottom border is transparent but reserved so tab activation does
+ * not shift the header baseline. main.js toggles .active on click
+ * and on .tab-pane at the same time.
+ */
+.nav-row { display: contents; }
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+}
+.nav-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px 7px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.nav-tab:hover { color: var(--fg-0); }
+.nav-tab.active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+.nav-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-light);
+  border-radius: 2px;
+}
+
+/* Tab panes — only the .active pane is rendered. Each pane is a
+   top-level section below the header and owns its own layout. */
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/*
+ * Paradigm switch — segmented two-button control between .title and
+ * .controls. Adopts the visual language of the lying project's
+ * Math / AI Agent toggle: a rounded bg-2 rail with 2px inner padding,
+ * transparent inactive buttons in fg-3, and an elevated active
+ * button using bg-1 + a subtle shadow. Clicking swaps between the
+ * DLM 2005 (E-heavy) and Lopez-Lira 2025 (U-heavy) population
+ * presets; main.js keeps the .active class in sync with App.paradigm.
+ */
+.paradigm-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.paradigm-btn {
+  appearance: none;
+  background: transparent;
+  color: var(--fg-3);
+  border: 0;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 0.18s var(--ease),
+              color 0.18s var(--ease),
+              box-shadow 0.18s var(--ease);
+}
+.paradigm-btn:hover {
+  color: var(--fg-0);
+}
+.paradigm-btn.active {
+  background: var(--bg-1);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.paradigm-btn.active:hover { color: var(--accent); }
+.paradigm-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/*
+ * Research-plan switch — the three segmented buttons Plan I /
+ * Plan II / Plan III that replaced the old paradigm switch in the
+ * navbar. Each button toggles App.plan and a matching body class
+ * (plan-i / plan-ii / plan-iii) that drives visibility of the LLM
+ * endpoint panel below. Visual style intentionally mirrors
+ * .paradigm-switch so the rail alignment and active-pill treatment
+ * stay consistent with the rest of the header.
+ */
+.plan-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.plan-btn {
+  appearance: none;
+  background: transparent;
+  color: var(--fg-3);
+  border: 0;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 0.18s var(--ease),
+              color 0.18s var(--ease),
+              box-shadow 0.18s var(--ease);
+}
+.plan-btn:hover { color: var(--fg-0); }
+.plan-btn.active {
+  background: var(--bg-1);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.plan-btn.active:hover { color: var(--accent); }
+.plan-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.controls label {
+  color: var(--fg-2);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.controls select,
+.controls input[type=number],
+.controls input[type=range] {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  min-width: 80px;
+}
+.controls input[type=range] { padding: 0 4px; min-width: 130px; }
+.controls button {
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, transform 0.05s;
+}
+.controls button:hover { background: var(--bg-3); border-color: var(--accent); }
+.controls button:active { transform: translateY(1px); }
+.controls button:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.controls button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.controls .theme-btn {
+  width: 32px; height: 32px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Grid ---------- */
 .grid {
   display: grid;
-  grid-template-columns: 280px 1fr 1fr 1fr;
-  grid-template-areas:
-    "params stats   stats   stats"
-    "params price   price   bubble"
-    "params fan     fan     reg"
-    "params volume  trust   trust"
-    "params agents  agents  agents"
-    "params msg     msg     events";
-  gap: 10px; padding: 10px;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: min-content;
+  gap: 14px;
+  padding: 16px 20px 40px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
-.panel-params   { grid-area: params; max-height: 92vh; overflow-y: auto; }
-.panel-stats    { grid-area: stats;  display: grid; grid-template-columns: repeat(9, 1fr); gap: 0; }
-.fig-price      { grid-area: price;  }
-.fig-bubble     { grid-area: bubble; }
-.fig-fan        { grid-area: fan;    }
-.fig-volume     { grid-area: volume; }
-.fig-reg        { grid-area: reg;    }
-.fig-trust      { grid-area: trust;  }
-.panel-agents   { grid-area: agents; }
-.panel-messages { grid-area: msg;    }
-.panel-events   { grid-area: events; }
 
 .panel {
   background: var(--bg-1);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-md);
+  min-width: 0;
+  overflow: hidden;
+}
+.panel h2 {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.panel h2 .math {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg-3);
+}
+.panel h2 .math em { font-style: italic; color: var(--fg-2); }
+.panel h3 {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  margin: 10px 0 6px;
+}
+
+/* =============================================================
+   Figure cards — academic-paper layout for every chart panel.
+
+   Layout contract (top → bottom, all fixed vertical rhythm so
+   figures sitting in the same grid row align at every block):
+
+     .fig-head       numbered title, 40px tall, bottom hairline
+     .fig-eq         display equation, 44px tall, left-rule block
+     canvas          the chart, height driven by .chart-* rules
+     .fig-caption    prose caption, grows to fill remaining space
+       .fig-note     "Note" header + dl glossary pinned to card bottom
+
+   Math typography is delegated to the browser's native MathML engine
+   (see js/mathml.js); the figure-level CSS only sizes the <math> glyphs.
+   ============================================================= */
+.panel.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+}
+.panel.figure > h2 { display: none; } /* legacy h2 suppressed */
+
+.panel.figure .fig-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+  min-height: 22px;
+}
+.panel.figure .fig-num {
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.panel.figure .fig-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg-0);
+  line-height: 1.35;
+  margin: 0;
+  text-transform: none;
+  display: block;
+}
+
+/* --- Display equation block --- */
+.panel.figure .fig-eq {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Cambria",
+               "Georgia", "Times New Roman", serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--fg-0);
+  background: var(--bg-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 4px 4px 0;
   padding: 10px 14px;
+  line-height: 1.5;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  overflow-x: auto;
+}
+/* The equation strip itself is just a flex row; all math typography
+   (including sub/sup layout and glyph selection) is delegated to the
+   browser's native MathML engine via the <math> tags generated from
+   js/mathml.js. Only the descriptive <em> caption next to the eq is
+   styled here. */
+.panel.figure .fig-eq em {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-style: normal;
+  color: var(--fg-3);
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+}
+.panel.figure .fig-eq math {
+  font-size: 15px;
+}
+
+.panel.figure canvas { margin: 0; }
+
+/* --- Legend row (optional, between canvas and caption) --- */
+.panel.figure .legend {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+/* --- Figure caption: flex grows to pin symbols to the card bottom --- */
+.panel.figure .fig-caption {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--fg-2);
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 0 auto;
+}
+.panel.figure .fig-caption p { margin: 0; }
+.panel.figure .fig-caption strong {
+  color: var(--fg-1);
+  font-weight: 600;
+}
+.panel.figure .fig-caption em {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia",
+               serif;
+  font-style: italic;
+  color: var(--fg-1);
+}
+
+/* --- Note block pinned to figure bottom --- *
+ * Single "NOTE" header + dl glossary sitting inside a soft bg-2 card.
+ * Shares typographic rules with .panel-agents .agent-notes-list so a
+ * symbol reads the same on an agent card as in a figure caption.
+ * ------------------------------------------------------------------ */
+.panel.figure .fig-note {
+  margin: 0;
+  margin-top: auto; /* stick to the bottom of the flex figcaption */
+  padding: 10px 14px 12px;
+  background: var(--bg-2);
+  border-radius: 4px;
+  border-left: 2px solid var(--border);
+}
+.panel.figure .fig-note-title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.panel.figure .fig-note-list {
+  display: grid;
+  grid-template-columns: minmax(56px, max-content) 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--fg-3);
+}
+.panel.figure .fig-note-list dt {
+  color: var(--fg-1);
+  white-space: nowrap;
+  text-align: right;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.panel.figure .fig-note-list dd {
+  margin: 0;
+  color: var(--fg-3);
+}
+.panel.figure .fig-note-list dd em {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia",
+               serif;
+  font-style: italic;
+  color: var(--fg-1);
+}
+
+/* ---------- Column spans ---------- */
+.panel-params   { grid-column: span 12; }
+.panel-stats    { grid-column: span 12; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.chart-price    { grid-column: span 8; }
+.panel-book     { grid-column: span 4; }
+.chart-bubble   { grid-column: span 4; }
+.chart-volume   { grid-column: span 4; }
+.chart-heatmap  { grid-column: span 4; }
+.chart-timeline { grid-column: span 12; }
+.panel-agents   { grid-column: span 8; }
+.panel-feed     { grid-column: span 4; }
+.panel-replay   { grid-column: span 12; }
+
+/* Extended panels (utility experiment mode) */
+.chart-valuation { grid-column: span 12; }
+.panel-metrics   { grid-column: span 12; }
+.chart-utility   { grid-column: span 6; }
+.chart-ownership { grid-column: span 6; }
+.chart-messages  { grid-column: span 8; }
+.chart-trust     { grid-column: span 4; }
+
+/* Hide the extended cluster unless body.extended is set by main.js.
+   In strict-DLM mode we also force-hide .ext-only rows because the
+   Lopez-Lira/AIPE utility-agent panels (risk preferences, messaging,
+   trust, deception) are out of scope for the strict replication. */
+body:not(.extended) .ext-only { display: none !important; }
+body.dlm-mode .ext-only        { display: none !important; }
+/* Hide the AIPE AI endpoint psec unless the AIPE paradigm is
+   active. The AI-config fields are meaningless for DLM and
+   Lopez-Lira, so they only render when body.wang-mode is set by
+   _setParadigm('wang'). */
+body:not(.wang-mode) .wang-only { display: none !important; }
+/* Mirror for strict-DLM: the DLM replication psec (treatment radios
+   + batch runner) is only visible when the DLM paradigm is active. */
+body:not(.dlm-mode) .dlm-only   { display: none !important; }
+/* The AI endpoint psec is only meaningful for Plan II / Plan III
+   because Plan I never touches the network. Shown when body has
+   either plan-ii or plan-iii, hidden for plan-i. main.js sets the
+   active body class in _setPlan() on every plan change. */
+/* Plan-specific AI endpoint panels: each visible only under its plan */
+body:not(.plan-ii)  .plan-ii-only  { display: none !important; }
+body:not(.plan-iii) .plan-iii-only { display: none !important; }
+/* AI endpoint panels span the full width (second row) under Plan II/III */
+.plan-ii-only, .plan-iii-only { grid-column: 1 / -1; }
+
+/* ---------- Parameters panel ---------- */
+/*
+ * Foldable container for every tunable. The header strip toggles
+ * .collapsed on the whole panel. Each .psec is a <details> card with
+ * a hover-reveal tooltip on its rows (data-tip). Range inputs are
+ * fully restyled for Chromium/Firefox parity and draw their filled
+ * portion from the --pct custom property that main.js keeps in sync
+ * with each slider's value on every input event.
+ */
+.panel-params { padding-bottom: 18px; }
+
+.panel-params .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 2px 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.18s var(--ease);
+}
+.panel-params .panel-header:hover { border-bottom-color: var(--accent); }
+.panel-params .panel-header h2 {
+  margin: 0;
+  color: var(--fg-0);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.panel-params .panel-header .chevron {
+  color: var(--fg-3);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.25s var(--ease), color 0.18s var(--ease);
+}
+.panel-params .panel-header:hover .chevron { color: var(--accent); }
+.panel-params.collapsed .panel-header {
+  margin-bottom: 0;
+  border-bottom-color: transparent;
+  padding-bottom: 4px;
+}
+.panel-params.collapsed .params-body { display: none; }
+.panel-params.collapsed .panel-header .chevron { transform: rotate(-90deg); }
+
+.panel-params .params-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1100px) {
+  .panel-params .params-body { grid-template-columns: 1fr; }
+}
+
+/* Each section of sliders is its own card. Open sections lift via a
+   subtle shadow; focus-within adds an accent ring while the user is
+   actively dragging a slider inside. */
+.psec {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px 14px;
+  transition:
+    background 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    box-shadow 0.22s var(--ease),
+    padding 0.18s var(--ease);
+}
+.psec:not([open]) {
+  padding: 4px 16px;
+}
+.psec:hover { border-color: var(--bg-3); }
+.psec[open] {
+  background: var(--bg-1);
+  border-color: var(--bg-3);
   box-shadow: var(--shadow-sm);
 }
-.panel-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 6px;
-}
-.panel-header h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-1); }
-.panel-header .muted { font-size: 11px; color: var(--fg-2); }
-
-.panel-chart { min-height: 220px; display: flex; flex-direction: column; }
-.panel-chart canvas { flex: 1; width: 100%; height: 220px; }
-.fig-head { margin-bottom: 4px; }
-.fig-head h2 { margin: 0; font-size: 12px; font-weight: 600; color: var(--fg-1); }
-
-/* ---------- Stats row ---------- */
-.panel-stats .stat {
-  display: flex; flex-direction: column; align-items: flex-start;
-  padding: 4px 12px;
-  border-right: 1px solid var(--border);
-}
-.panel-stats .stat:last-child { border-right: 0; }
-.panel-stats .label { font-size: 10px; color: var(--fg-2); text-transform: uppercase; letter-spacing: 0.04em; }
-.panel-stats .value { font-family: var(--font-mono); font-weight: 600; font-size: 14px; color: var(--fg-0); }
-.panel-stats .value.warn { color: var(--red); }
-.panel-stats .value.ok   { color: var(--green); }
-.panel-stats .value.price { color: var(--accent); }
-.panel-stats .value.fv    { color: var(--amber); }
-
-/* ---------- Parameters ---------- */
-.psec { border-bottom: 1px dashed var(--border); margin-bottom: 6px; padding-bottom: 6px; }
-.psec[open] { }
-.psec summary { cursor: pointer; font-weight: 600; font-size: 12px; color: var(--fg-1); padding: 4px 0; }
-.psec summary:hover { color: var(--accent); }
-.psec-body { padding: 4px 0 6px; }
-.param-row { margin-bottom: 8px; }
-.param-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--fg-1); margin-bottom: 2px; }
-.param-head label { font-size: 11px; }
-.pval { font-family: var(--font-mono); color: var(--fg-0); }
-input[type=range] { width: 100%; accent-color: var(--accent); }
-.input-select {
-  width: 100%; padding: 4px 6px; font: inherit; font-size: 12px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--bg-1); color: var(--fg-0);
+.psec:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-/* Toggle switch */
-.slide-toggle { display: inline-block; position: relative; width: 32px; height: 18px; }
-.slide-toggle input { opacity: 0; width: 0; height: 0; }
-.slide-track { position: absolute; inset: 0; background: var(--bg-3); border-radius: 9px; transition: background .15s; }
-.slide-thumb { position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .15s; }
-.slide-toggle input:checked + .slide-track { background: var(--accent); }
-.slide-toggle input:checked + .slide-track .slide-thumb { transform: translateX(14px); }
-.dlm-treatment-row { display: flex; gap: 10px; }
-.dlm-treatment-opt { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-
-/* ---------- Agent table ---------- */
-.agent-table-wrap { max-height: 440px; overflow-y: auto; }
-#agent-table {
-  width: 100%; border-collapse: collapse; font-size: 12px;
+.psec summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-1);
+  transition: color 0.18s var(--ease);
+  /* Own stacking context so absolutely-positioned tooltip ::after
+     pseudo-elements from .param-row children can never overlay the
+     click target — fixes fold toggle in grid layouts where the
+     tooltip z-index bleeds above the summary. */
+  position: relative;
+  z-index: 2;
+}
+.psec:hover summary { color: var(--fg-0); }
+.psec summary::marker { display: none; }
+.psec summary::-webkit-details-marker { display: none; }
+/* Chevron built from a rotated border-square so it renders crisply
+   on HiDPI at any font-size without depending on a glyph font. */
+.psec summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-right: 1.5px solid var(--fg-3);
+  border-bottom: 1.5px solid var(--fg-3);
+  transform: rotate(-45deg) translate(-1px, -1px);
+  transition: transform 0.22s var(--ease), border-color 0.18s var(--ease);
+}
+.psec[open] summary::before {
+  transform: rotate(45deg) translate(-1px, -1px);
+  border-color: var(--accent);
+}
+.psec summary .muted {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
 }
-#agent-table thead th {
-  position: sticky; top: 0; background: var(--bg-2);
-  border-bottom: 1px solid var(--border);
-  padding: 6px 8px; text-align: left;
-  font-size: 11px; font-weight: 600;
-  color: var(--fg-2); text-transform: uppercase; letter-spacing: 0.03em;
+.psec .psec-body {
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* Native <details> collapse: the UA default hides non-summary children
+   on :not([open]), but our .psec .psec-body rule above sets display:flex
+   with higher specificity and wins — so without this explicit override
+   the body stays visible and clicking the summary only toggles the
+   chevron. Force display: none when the section is closed. */
+.psec:not([open]) > .psec-body { display: none; }
+
+.param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.param-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.param-head label {
+  color: var(--fg-1);
+  font-size: 11px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.18s var(--ease);
+}
+.param-row:hover .param-head label,
+.param-row:focus-within .param-head label { color: var(--fg-0); }
+
+.param-head .pval {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 3px 10px;
+  border-radius: 999px;
+  min-width: 52px;
+  text-align: center;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+.param-row:focus-within .param-head .pval {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Custom range input. --pct is owned by main.js: it reads min/max/value
+   and writes a percentage string on every input event so the filled
+   portion of the track follows the thumb. Both Chromium and Firefox
+   get their own pseudo-elements. */
+.param-row input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  --pct: 50%;
+}
+.param-row input[type=range]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--pct),
+    var(--bg-3)   var(--pct),
+    var(--bg-3)   100%
+  );
+}
+.param-row input[type=range]::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-3);
+}
+.param-row input[type=range]::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.param-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--accent);
+  margin-top: -5.5px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+.param-row input[type=range]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+.param-row input[type=range]:hover::-webkit-slider-thumb,
+.param-row input[type=range]:focus::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px var(--accent-light);
+}
+.param-row input[type=range]:hover::-moz-range-thumb,
+.param-row input[type=range]:focus::-moz-range-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px var(--accent-light);
+}
+.param-row input[type=range]:active::-webkit-slider-thumb {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 8px var(--accent-light);
+}
+.param-row input[type=range]:active::-moz-range-thumb {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 8px var(--accent-light);
+}
+
+/* Slide toggle — iOS-style track + thumb that sits on the right side
+   of a param-head, aligned with the .pval readout position. Track
+   dimensions and border-radius echo the custom range-input styling;
+   the accent colour scheme matches the slider thumb's active state. */
+.param-toggle-pair {
+  flex-direction: row;
+  gap: 8px;
+}
+.param-toggle-pair > .param-head { flex: 0 0 auto; }
+.param-toggle-pair > .param-head label { flex: none; overflow: visible; }
+.slide-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   cursor: pointer;
 }
-#agent-table thead th:hover { color: var(--accent); }
-#agent-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
-#agent-table tr:hover { background: var(--bg-2); }
-#agent-table tr.traced { background: var(--accent-light); }
-#agent-table tr.expanded { background: var(--bg-2); }
-.col-name { font-weight: 600; }
-.col-cash, .col-inv, .col-wealth { text-align: right; font-family: var(--font-mono); }
-.badge.llm { font-size: 9px; padding: 1px 5px; background: var(--purple); color: #fff; border-radius: 3px; }
-.tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--bg-3); font-family: var(--font-mono); }
-.tag.action-bid  { background: rgba(22,163,74,0.12);  color: var(--green); }
-.tag.action-ask  { background: rgba(220,38,38,0.12);  color: var(--red); }
-.tag.action-hold { background: var(--bg-3); color: var(--fg-2); }
-.expand-row td { padding: 0; background: var(--bg-0); }
-.expand-pad { padding: 8px 12px; }
-.expand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 12px; }
-.expand-head .export-trace {
-  margin-left: auto; padding: 2px 8px; font-size: 11px;
-  border: 1px solid var(--border); background: var(--bg-1); border-radius: var(--radius-sm); cursor: pointer;
+.slide-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
-.trace-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-mono); }
-.trace-table th, .trace-table td { border-bottom: 1px solid var(--border); padding: 3px 6px; text-align: left; }
-.mono { font-family: var(--font-mono); font-size: 10px; color: var(--fg-2); }
+.slide-track {
+  display: block;
+  width: 34px;
+  height: 18px;
+  background: var(--bg-3);
+  border-radius: 9px;
+  transition: background 0.2s var(--ease);
+}
+.slide-thumb {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 2px;
+  background: var(--fg-3);
+  border-radius: 50%;
+  transition: transform 0.2s var(--ease), background 0.18s var(--ease),
+              box-shadow 0.18s var(--ease);
+}
+.slide-toggle input:checked ~ .slide-track {
+  background: var(--accent);
+}
+.slide-toggle input:checked ~ .slide-track .slide-thumb {
+  transform: translateX(16px);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
 
-/* ---------- Messages / Events ---------- */
-#message-log, #event-log { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; font-size: 11px; font-family: var(--font-mono); }
-.msg, .event { display: grid; grid-template-columns: 50px 90px 100px 140px 1fr; gap: 6px; padding: 3px 6px; border-bottom: 1px dashed var(--border); }
-.msg .warn { color: var(--red); font-weight: 600; }
-.msg.kind-regulator-warning { background: rgba(220,38,38,0.06); }
-.msg.kind-valuation-report  { color: var(--fg-1); }
-.msg-tick { color: var(--fg-3); }
-.msg-from { color: var(--fg-0); font-weight: 600; }
-.msg-to   { color: var(--fg-2); }
-.msg-kind { color: var(--purple); }
-.msg-body { color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.event { grid-template-columns: 50px 140px 1fr; }
-.ev-type { color: var(--accent); }
-.ev-tick { color: var(--fg-3); }
+/* Risk-preference composition bar — the three linked sliders push
+   their percentages into this segmented bar so the overall risk mix
+   is visible at a glance even when the sliders are below the fold. */
+.comp-bar {
+  display: flex;
+  height: 26px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.comp-bar .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  transition: flex 0.28s var(--ease);
+}
+.comp-bar .seg span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.comp-bar .seg-loving  { background: var(--red); }
+.comp-bar .seg-neutral { background: var(--fg-3); }
+.comp-bar .seg-averse  { background: var(--accent); }
+.comp-bar .seg-neutral span { color: var(--fg-0); text-shadow: none; }
+/* Experience preferences: same red→grey→blue gradient as risk
+   preferences. The bubble-fueling end (naive) reuses --red, the
+   bubble-suppressing end (veteran) reuses --accent, and the
+   intermediate sits on the neutral grey. */
+.comp-bar .seg-naive   { background: var(--red); }
+.comp-bar .seg-once    { background: var(--fg-3); }
+.comp-bar .seg-veteran { background: var(--accent); }
+.comp-bar .seg-once span { color: var(--fg-0); text-shadow: none; }
 
-/* ---------- Scrollbars (subtle) ---------- */
-.agent-table-wrap::-webkit-scrollbar,
-.panel-params::-webkit-scrollbar,
-#message-log::-webkit-scrollbar,
-#event-log::-webkit-scrollbar { width: 8px; }
-.agent-table-wrap::-webkit-scrollbar-thumb,
-.panel-params::-webkit-scrollbar-thumb,
-#message-log::-webkit-scrollbar-thumb,
-#event-log::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 4px; }
+/*
+ * Per-row hover tooltip (pure CSS). The entire .param-row is the hover
+ * zone so moving the mouse onto the slider itself is enough to reveal
+ * the explanation. The tip floats above the row by default; first-
+ * child rows flip below so they don't collide with the section header.
+ */
+.param-row[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: 320px;
+  max-width: min(420px, 90vw);
+  padding: 12px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg-1);
+  font: 11px/1.6 var(--font-ui);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+}
+.param-row[data-tip]:hover::after,
+.param-row[data-tip]:focus-within::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+.psec-body > .param-row[data-tip]:first-child::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+  transform: translateY(-4px);
+}
+.psec-body > .param-row[data-tip]:first-child:hover::after,
+.psec-body > .param-row[data-tip]:first-child:focus-within::after {
+  transform: translateY(0);
+}
 
-/* ---------- Responsive collapse ---------- */
-@media (max-width: 1100px) {
+/* Per-toggle tooltip inside .param-toggle-pair — same look as the
+   per-row tooltip but scoped to an individual .param-head. */
+.param-head[data-tip] { position: relative; }
+.param-head[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: 320px;
+  max-width: min(420px, 90vw);
+  padding: 12px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg-1);
+  font: 11px/1.6 var(--font-ui);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+}
+.param-head[data-tip]:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- AI endpoint (AIPE) ---------- */
+/*
+ * Three-input form inside the .wang-only psec: API key, endpoint
+ * override, and model name. Nothing is persisted — main.js reads
+ * the fields on every run start and forwards them to AI.call()
+ * only when App.paradigm === 'wang' and the key is non-empty.
+ * Styling matches the rest of the parameter panel (no range track
+ * here, just text inputs that sit in a subtle rail) so the
+ * Wang-only block does not break the visual rhythm of the other
+ * psec cards. The accent colour is pink to pair with the pink
+ * ai.js node in the Architecture diagram.
+ */
+.ai-config { gap: 10px; }
+.ai-config .ai-config-note {
+  margin: 0 0 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+.ai-config .param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-config .param-head label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-2);
+}
+.ai-config .input-text {
+  appearance: none;
+  width: 100%;
+  background: var(--bg-1);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  transition: border-color 0.18s var(--ease),
+              box-shadow 0.18s var(--ease);
+}
+.ai-config select.input-text {
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-2) 50%),
+                    linear-gradient(135deg, var(--fg-2) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%,
+                       calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 26px;
+}
+.ai-config .input-text::placeholder { color: var(--fg-3); }
+.ai-config .ai-status {
+  min-height: 14px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--pink);
+}
+.ai-config .ai-status:empty { display: none; }
+.ai-config .input-text:hover { border-color: var(--bg-3); }
+.ai-config .input-text:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink) 22%, transparent);
+}
+.wang-only[open],
+.plan-ii-only[open],
+.plan-iii-only[open] {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pink) 28%, transparent),
+              var(--shadow-sm);
+}
+.wang-only summary,
+.plan-ii-only summary,
+.plan-iii-only summary {
+  color: var(--pink);
+}
+.wang-only summary .muted,
+.plan-ii-only summary .muted,
+.plan-iii-only summary .muted {
+  color: color-mix(in srgb, var(--pink) 70%, var(--fg-3));
+}
+
+/* ---------- DLM 2005 strict-replication controls ---------- */
+/*
+ * Parallel block to .wang-only but tinted blue (the DLM paradigm's
+ * accent in the navbar). The treatment selector is a pair of radio
+ * buttons laid out side-by-side so they read as a two-option toggle,
+ * and the batch button spans the row underneath with a status line
+ * that fills in after the 10-session run.
+ */
+.dlm-only[open] {
+  border-color: var(--blue, #3b82f6);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue, #3b82f6) 28%, transparent),
+              var(--shadow-sm);
+}
+.dlm-only summary {
+  color: var(--blue, #3b82f6);
+}
+.dlm-treatment-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.dlm-treatment-opt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg-1);
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.dlm-treatment-opt > span { flex: 1; }
+.dlm-treatment-opt:hover {
+  border-color: var(--blue, #3b82f6);
+}
+.dlm-treatment-opt input[type="radio"] {
+  accent-color: var(--blue, #3b82f6);
+  margin: 0;
+}
+.dlm-treatment-opt:has(input:checked) {
+  border-color: var(--blue, #3b82f6);
+  background: color-mix(in srgb, var(--blue, #3b82f6) 10%, var(--bg-1));
+  color: var(--fg-0);
+}
+/* Research-plan radio stack — same tile styling as the DLM treatment
+   row, but vertical so each option can spell out the plan clearly. */
+.plan-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.plan-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg-1);
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.plan-opt:hover {
+  border-color: var(--accent, #3b82f6);
+}
+.plan-opt input[type="radio"] {
+  accent-color: var(--accent, #3b82f6);
+  margin: 0;
+}
+.plan-opt:has(input:checked) {
+  border-color: var(--accent, #3b82f6);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 10%, var(--bg-1));
+  color: var(--fg-0);
+}
+.btn-dlm-batch {
+  appearance: none;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--blue, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.18s var(--ease);
+}
+.btn-dlm-batch:hover {
+  background: color-mix(in srgb, var(--blue, #3b82f6) 85%, white);
+}
+.btn-dlm-batch:active {
+  background: color-mix(in srgb, var(--blue, #3b82f6) 75%, black);
+}
+.dlm-batch-status {
+  min-height: 14px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--blue, #3b82f6);
+}
+.dlm-batch-status:empty { display: none; }
+
+/* 10-session batch results panel: per-round data labeled R{r}_S{s}
+   across all sessions, plus per-treatment aggregate line. The panel
+   is hidden when empty (no batch has run yet) and expands as each
+   session completes. */
+.panel-batch { grid-column: span 12; }
+.panel-batch:has(#batch-results:empty) { display: none; }
+.batch-agg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.batch-agg-row { color: var(--fg-1); }
+.batch-agg-row .treat {
+  display: inline-block;
+  width: 22px;
+  font-weight: 700;
+  color: var(--blue, #3b82f6);
+}
+.batch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.batch-table th,
+.batch-table td {
+  padding: 3px 6px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.batch-table th {
+  color: var(--fg-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 9px;
+}
+.batch-table th:first-child { text-align: left; }
+.batch-table .batch-label { text-align: left; font-weight: 600; color: var(--accent); }
+.batch-table .batch-metric-name { text-align: left; color: var(--fg-2); }
+.batch-table .batch-metric-name em {
+  font-style: normal;
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 9px;
+  color: var(--fg-3);
+  margin-left: 4px;
+}
+.batch-table .batch-group-label td {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-3);
+  padding-top: 8px;
+  border-bottom: 1px solid var(--bg-3);
+  text-align: left;
+  font-weight: 600;
+}
+.batch-table .batch-group-label:first-child td { padding-top: 4px; }
+.batch-table tbody tr:hover { background: var(--bg-2); }
+.batch-table .ok  { color: var(--green, #22c55e); }
+.batch-table .bad { color: var(--red, #ef4444); }
+
+/* ---------- Constant cards (Paper + Hidden) ---------- */
+/*
+ * Two read-only psec sections nested inside Experiment settings,
+ * sharing the same card layout but distinguished by accent colour:
+ *
+ *   .const-paper  — design constants pinned by Dufwenberg, Lindqvist
+ *                   & Moore (2005) §I (asset life, dividend shape,
+ *                   expected dividend, FV formula). Accent: blue.
+ *   .const-sim    — discretization + Utility-agent calibration
+ *                   constants pinned by this simulator's
+ *                   implementation (ticksPerPeriod, N(F/T/R) slots,
+ *                   belief weights …). Accent: amber. Default folded.
+ *
+ * Both render inside a <details class="psec"> so the open/close
+ * affordance is handled natively by the existing psec chrome. The
+ * shared .const-* class set keeps the layout in one place; the two
+ * sections only override the left-border and val colour so the
+ * "paper vs implementation" boundary is visually legible.
+ */
+/* Both constant sections span the full width of the 2-col params-body
+   grid — their dense card lists need the width to breathe. */
+.panel-params .params-body > .const-paper,
+.panel-params .params-body > .const-sim { grid-column: 1 / -1; }
+.const-paper .psec-body,
+.const-sim   .psec-body { gap: 0; }
+.const-paper summary .const-cite,
+.const-sim   summary .const-cite {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--fg-3);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.const-paper .const-list,
+.const-sim   .const-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.const-paper .const-item,
+.const-sim   .const-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  min-width: 0;
+}
+.const-sim .const-item {
+  border-left-color: var(--amber);
+}
+.const-paper .const-item dt,
+.const-sim   .const-item dt {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--fg-0);
+  font-size: 13px;
+  font-weight: 500;
+}
+.const-paper .const-item dt math,
+.const-sim   .const-item dt math {
+  font-size: 13px;
+}
+.const-paper .const-val {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.const-sim .const-val {
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.const-paper .const-label,
+.const-sim   .const-label {
+  margin: 0;
+  font-size: 10px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.const-paper .const-note,
+.const-sim   .const-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-1);
+  font-style: italic;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
+.const-paper .const-src,
+.const-sim   .const-src {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-style: normal;
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Stats cells ---------- */
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 0;
+}
+.stat .label {
+  color: var(--fg-2);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.stat .value {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.stat .value.price  { color: var(--accent); }
+.stat .value.fv     { color: var(--fv); }
+.stat .value.bubble { color: var(--bubble); }
+.stat .value.vol    { color: var(--volume); }
+
+/* ---------- Charts ---------- */
+.panel-chart canvas { display: block; width: 100%; height: 240px; }
+.chart-bubble canvas,
+.chart-volume canvas,
+.chart-heatmap canvas { height: 160px; }
+.chart-timeline canvas { height: 190px; }
+.chart-valuation canvas { height: 220px; }
+.chart-utility canvas,
+.chart-ownership canvas { height: 200px; }
+.chart-messages canvas { height: 200px; }
+.chart-trust canvas    { height: 220px; }
+
+/* ---------- Order book ------------------------------------------
+ * Mirrors the .panel-feed treatment: the panel is a flex column so
+ * the list body can grow to fill whatever height the grid row
+ * assigns it (pinned to the sibling .chart-price figure). Bids and
+ * asks are two side-by-side lists that each overflow independently,
+ * with a dynamic row count computed in renderBook from the measured
+ * clientHeight.
+ * ---------------------------------------------------------------- */
+.panel-book {
+  display: flex;
+  flex-direction: column;
+}
+.panel-book > h2 { flex: 0 0 auto; }
+
+.book-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.book-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.side-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.side-label.bids { color: var(--bid); }
+.side-label.asks { color: var(--ask); }
+
+.book-head {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(48px, 1fr) 36px minmax(0, 1.4fr);
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 10px;
+  color: var(--fg-2);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--border);
+}
+
+.book-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.book-list li {
+  display: grid;
+  grid-template-columns: minmax(48px, 1fr) 36px minmax(0, 1.4fr);
+  gap: 6px;
+  padding: 3px 6px;
+  align-items: center;
+}
+.book-list li:nth-child(odd) { background: var(--bg-2); }
+.book-list li .price { font-weight: 600; }
+.book-list.bids li .price { color: var(--bid); }
+.book-list.asks li .price { color: var(--ask); }
+.book-list li .agent {
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.book-list li.empty {
+  display: block;
+  padding: 8px 6px;
+  color: var(--fg-3);
+  font-style: italic;
+  text-align: center;
+}
+
+/* ---------- Agents ---------- */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.agent-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agent-card .agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.agent-card .agent-head-left  { min-width: 0; }
+.agent-card .agent-head-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.agent-card .agent-name { font-weight: 600; font-size: 13px; letter-spacing: 0.02em; }
+.agent-card .agent-type {
+  font-size: 10px;
+  color: var(--fg-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.agent-card .metrics {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.agent-card .metric {
+  color: var(--fg-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+}
+.agent-card .metric-val { color: var(--fg-0); font-weight: 600; text-align: right; }
+/* Utility formula row — fixed height so the card size stays constant
+   regardless of which risk-typed formula (loving/neutral/averse) is
+   shown, keeping the "click to view prompt" hint at the same Y. */
+.agent-card .metric-util,
+.agent-card .metric-util-val { height: 20px; overflow: hidden; align-content: center; }
+/* Paper-symbol wrapper. Real math typography (font selection,
+   sub/sup sizing, baseline shift) is delegated to the browser's
+   native MathML engine — this rule only paints the wrapper a muted
+   colour and pins the baseline so the symbol sits next to its
+   English label without stretching the row height. */
+.agent-card .sym {
+  color: var(--fg-3);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+}
+.agent-card .sym math { font-size: 11px; }
+/* When a sym lives in the value column (right side of the metric
+   grid), paint it in the foreground weight so it reads as the
+   value — matching the numeric cells in the same column. */
+.agent-card .metric-val .sym { color: var(--fg-0); }
+.agent-card .action-sym { }
+.agent-card .action-sym math { font-size: 10px; }
+.agent-card .last-action {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.agent-card .last-action.bid  { color: var(--green); background: var(--green-bg); }
+.agent-card .last-action.ask  { color: var(--red);   background: var(--red-bg); }
+.agent-card .last-action.hold { color: var(--fg-2);  background: var(--bg-2); }
+.agent-card.fundamentalist { border-left: 2px solid var(--accent); }
+.agent-card.trend          { border-left: 2px solid var(--bubble); }
+.agent-card.random         { border-left: 2px solid var(--fg-2); }
+.agent-card.dlm            { border-left: 2px solid var(--blue); }
+
+/* DLM mode agent badges: endowment type (A or B), endogenous-experience
+   state (inexperienced vs experienced·nR), and a round-4 replacement
+   marker for the fresh traders spliced in between rounds 3 and 4. Only
+   rendered for agents with type === 'dlm', hidden entirely otherwise. */
+.agent-card .dlm-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+.agent-card .dlm-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.agent-card .dlm-badge-endow {
+  color: var(--blue);
+  background: var(--blue-bg);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
+.agent-card .dlm-badge-novice {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border-color: color-mix(in srgb, var(--amber) 30%, transparent);
+}
+.agent-card .dlm-badge-vet {
+  color: var(--green);
+  background: var(--green-bg);
+  border-color: color-mix(in srgb, var(--green) 30%, transparent);
+}
+.agent-card .dlm-badge-fresh {
+  color: var(--red);
+  background: var(--red-bg);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+/* Flip-card wrapper — click to flip between agent metrics (front)
+   and LLM prompt (back). Only agents with Plan II/III data get the
+   flippable class; others render a plain static card. */
+.agent-card-wrap {
+  perspective: 1000px;
+  display: flex;
+}
+.agent-card-wrap.flippable {
+  cursor: pointer;
+}
+.agent-card-inner {
+  position: relative;
+  width: 100%;
+  transition: transform 0.5s cubic-bezier(.15,.9,.35,1);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.agent-card-inner > .card-front {
+  height: 100%;
+}
+.agent-card-wrap.flipped .agent-card-inner {
+  transform: rotateY(180deg);
+}
+.card-front,
+.card-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.card-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  transform-style: flat;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.card-back-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-back-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pink);
+}
+.card-back-hint {
+  font-size: 8px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.card-back-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+.card-flip-hint {
+  font-size: 8px;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: right;
+  margin-top: 2px;
+}
+.llm-prompt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.llm-section .llm-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.copy-hint {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--fg-3);
+  opacity: 0.6;
+}
+.llm-copyable {
+  cursor: pointer;
+}
+.llm-copyable:hover {
+  border-color: var(--accent);
+}
+.llm-text {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--fg-1);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.llm-text.llm-response {
+  color: var(--pink);
+  font-weight: 600;
+  max-height: 40px;
+}
+
+/* Agents-panel header: title + Resample button inline, stage label
+   under the title. In preview mode the panel picks up an outline to
+   signal that the endowment fields are editable. */
+.panel-agents .agents-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.panel-agents .agents-header h2 {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.panel-agents .stage-label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--amber);
+  font-weight: 500;
+  padding: 2px 6px;
+  border: 1px solid var(--amber);
+  border-radius: 10px;
+  background: var(--amber-bg);
+}
+.panel-agents .stage-label.live {
+  color: var(--green);
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+.panel-agents.preview {
+  outline: 1px dashed var(--amber);
+  outline-offset: -1px;
+}
+
+/* Inline editable endowment fields — shown only in the pre-run
+   preview, right-aligned to match the read-only metric-val layout. */
+.agent-card .endow-input {
+  width: 64px;
+  background: var(--bg-1);
+  color: var(--fg-0);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.agent-card .endow-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-2);
+}
+.agent-card .endow-input::-webkit-outer-spin-button,
+.agent-card .endow-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ---------- Agent-panel explanatory notes ---------- *
+ * Single "Note" block (title + dl glossary). Each <dt> carries the
+ * exact term name that appears on the agent card ("Cash", "P&L", …)
+ * in the same UI font as the card, so symbol/term typography stays
+ * consistent across card and note. <dd> holds the prose explanation.
+ * ------------------------------------------------------------------ */
+.panel-agents .agent-notes {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--fg-3);
+}
+.panel-agents .agent-notes-title {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+}
+.panel-agents .agent-notes-list {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+.panel-agents .agent-notes-list dt {
+  color: var(--fg-1);
+  font-weight: 500;
+  white-space: nowrap;
+  text-align: right;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.panel-agents .agent-notes-list dt .sym,
+.panel-agents .agent-notes-list dt [data-sym] {
+  color: var(--fg-3);
+}
+.panel-agents .agent-notes-list dd {
+  margin: 0;
+  color: var(--fg-3);
+}
+.panel-agents .agent-notes-list dd em {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia",
+               "Times New Roman", serif;
+  font-style: italic;
+  color: var(--fg-1);
+}
+
+/* ---------- Feed ---------- *
+ * The panel is a flex column so the <ul> fills whatever row height the
+ * shared grid cell ends up at. The row is sized by min-content of the
+ * taller sibling (.panel-agents), so we need #trade-feed to contribute
+ * *nothing* to panel-feed's own intrinsic height — otherwise a long
+ * trade list would inflate the row past the Agents panel and stretch
+ * Agents along with it. `flex-basis: 0` is what makes that work: with
+ * basis 0 the UL's content size does not propagate into the flex
+ * container's min-content calculation, so panel-feed's min-content
+ * stays at ~h2 height and the grid row tracks Agents exactly. The list
+ * still flex-grows to fill the row, and its own `overflow-y: auto`
+ * kicks in for anything that would spill past the Agents-height cap.
+ * ------------------------------------------------------------------ */
+.panel-feed {
+  display: flex;
+  flex-direction: column;
+}
+.panel-feed > h2 { flex: 0 0 auto; }
+#trade-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+#trade-feed li {
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--border);
+  display: grid;
+  grid-template-columns: 40px 70px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+#trade-feed .t-tick { color: var(--fg-2); }
+#trade-feed .t-price { color: var(--accent); font-weight: 700; }
+#trade-feed .t-agents { color: var(--fg-2); }
+#trade-feed li.feed-dividend {
+  background: var(--amber-bg);
+  border-left: 2px solid var(--amber);
+  padding-left: 6px;
+}
+#trade-feed li.feed-dividend .t-price { color: var(--fv); }
+#trade-feed li.feed-dividend .t-agents { color: var(--fv); }
+#trade-feed li.feed-silent {
+  opacity: 0.45;
+  border-bottom-style: dotted;
+}
+#trade-feed li.feed-silent .t-tick,
+#trade-feed li.feed-silent .t-price,
+#trade-feed li.feed-silent .t-agents {
+  color: var(--fg-3, var(--fg-2));
+  font-weight: 400;
+}
+
+/* ---------- Replay ---------- */
+.panel-replay .replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.panel-replay .replay-controls button {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg-0);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.panel-replay .replay-controls button:hover { background: var(--bg-3); }
+.panel-replay .replay-controls .primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.panel-replay .replay-pos {
+  margin-left: auto;
+  color: var(--fg-2);
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.panel-replay input[type=range] { width: 100%; margin-bottom: 6px; }
+
+.trace-inspector {
+  margin-top: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+#trace-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.trace-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.trace-card .trace-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--fg-0);
+  margin-bottom: 5px;
+}
+.trace-card .trace-kind {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.trace-card .trace-kind.bid  { color: var(--green); background: var(--green-bg); }
+.trace-card .trace-kind.ask  { color: var(--red);   background: var(--red-bg); }
+.trace-card .trace-kind.hold { color: var(--fg-2);  background: var(--bg-2); }
+.trace-card .trace-row { color: var(--fg-2); margin: 1px 0; line-height: 1.35; }
+.trace-card .trace-row strong { color: var(--fg-0); font-weight: 600; }
+
+/* ---------- Timeline legend ---------- */
+.legend {
+  display: flex;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--fg-2);
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.legend i.bid   { background: var(--bid); }
+.legend i.ask   { background: var(--ask); }
+.legend i.hold  { background: var(--hold); }
+.legend i.trade { background: var(--accent); border-radius: 50%; }
+.legend i.lie   { background: transparent; border: 1.5px solid var(--bubble); border-radius: 50%; }
+
+/* ---------- Extended-mode controls ---------- */
+.ext-controls {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border: 1px dashed var(--border);
+  border-radius: 5px;
+}
+.ext-controls .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  font-size: 11px;
+  color: var(--fg-2);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.ext-controls input[type=checkbox] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+}
+
+/* ---------- Metrics panel (Table 1) ---------- */
+/* Rendered as a <table class="batch-table"> to match Table 2 styling.
+   Group headers use a spanning row with .batch-group-label. */
+#metrics-body .muted { color: var(--fg-3); font-size: 12px; padding: 8px 0; }
+
+/* ---------- EU candidate table in trace cards ---------- */
+.trace-card .trace-eu {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.trace-card .eu-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--fg-2);
+  font-size: 10px;
+  gap: 10px;
+}
+.trace-card .eu-row.chosen {
+  color: var(--bid);
+  font-weight: 700;
+}
+.trace-card .eu-lbl { flex: 1; }
+
+/* ---------- Responsive ---------- */
+/* Tablet (701–1100px): collapse to 6 columns. Mobile (≤700px) uses
+   a single-column stack — every panel fills the viewport width and
+   charts auto-resize via setupHiDPI for a fully responsive layout. */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .grid { grid-template-columns: repeat(6, 1fr); }
+  .panel-stats { grid-template-columns: repeat(3, 1fr); }
+  .chart-price, .chart-timeline, .panel-agents { grid-column: span 6; }
+  .panel-book, .chart-bubble, .chart-volume, .chart-heatmap, .panel-feed { grid-column: span 6; }
+  .chart-valuation, .chart-utility,
+  .chart-ownership, .chart-messages, .chart-trust { grid-column: span 6; }
+  .panel-metrics, .panel-batch { grid-column: span 6; }
+  .agents-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  /* ── Modern mobile header ──
+     Two compact rows: brand + controls, then a tab bar.
+     Title never wraps (ellipsis). Controls are icon-only with an
+     inline speed slider. Tabs use title-case and flex-fill so all
+     four share the row evenly; plan pills show just the roman
+     numeral and anchor at the trailing edge. No horizontal scroll
+     needed — everything fits at 375px. */
+  .app-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title controls"
+      "nav   nav";
+    gap: 0;
+    padding: 0;
+    align-items: center;
+  }
+  .title {
+    grid-area: title;
+    padding: 8px 0 8px 14px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .title h1 {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .controls {
+    grid-area: controls;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px 6px 6px;
+    width: auto;
+  }
+  .controls label {
+    font-size: 0;
+    flex-direction: row;
+    flex: 0 1 auto;
+    gap: 0;
+    min-width: 0;
+  }
+  .controls input[type=range] { min-width: 36px; width: 52px; }
+  .controls button {
+    font-size: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 8px;
+  }
+  .controls button::before { font-size: 14px; }
+  #btn-start::before  { content: '\25B6'; }
+  #btn-pause::before  { content: '\23F8'; }
+  #btn-reset::before  { content: '\21BA'; }
+  #btn-export::before { content: '\2B07'; }
+  .controls .theme-btn { width: 32px; height: 32px; font-size: 0; border-radius: 8px; }
+  .controls .theme-btn::before { content: '\25D1'; font-size: 14px; }
+
+  /* Tab bar: tabs flex-fill evenly, plan pills show just I/II/III */
+  .nav-row {
+    grid-area: nav;
+    display: flex;
+    align-items: stretch;
+    padding: 0 10px;
+    border-top: 1px solid var(--border);
+  }
+  .nav-tabs {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 0;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .nav-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 2px 8px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .plan-switch {
+    flex: 0 0 auto;
+    padding: 2px;
+    margin: 5px 0 5px 6px;
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+    border-radius: 0;
+  }
+  .plan-btn {
+    font-size: 0;
+    padding: 5px 10px;
+    letter-spacing: 0;
+  }
+  .plan-btn::after {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .plan-btn[data-plan="I"]::after   { content: 'I'; }
+  .plan-btn[data-plan="II"]::after  { content: 'II'; }
+  .plan-btn[data-plan="III"]::after { content: 'III'; }
+
+  /* Experiment grid: single-column responsive layout so every panel
+     stacks vertically and fills the screen width — no horizontal
+     scroll needed. Charts auto-resize via setupHiDPI. */
   .grid {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "stats"
-      "params"
-      "price"
-      "bubble"
-      "fan"
-      "volume"
-      "reg"
-      "trust"
-      "agents"
-      "msg"
-      "events";
+    padding: 10px 10px 28px;
+    gap: 10px;
   }
-  .panel-stats { grid-template-columns: repeat(3, 1fr); }
+  /* Reset all panel spans to 1 for the single-column grid */
+  .panel-params, .panel-stats,
+  .chart-price, .panel-book,
+  .chart-bubble, .chart-volume, .chart-heatmap,
+  .chart-timeline, .panel-agents, .panel-feed,
+  .panel-replay { grid-column: span 1; }
+  .chart-valuation, .panel-metrics, .panel-batch,
+  .chart-utility, .chart-ownership,
+  .chart-messages, .chart-trust { grid-column: span 1; }
+
+  /* Batch tables: horizontal scroll when columns exceed viewport */
+  .panel-metrics, .panel-batch { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .batch-table { min-width: 360px; }
+
+  /* Stats: 3-col on phones so all 6 fit in 2 rows */
+  .panel-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { padding: 10px 10px; }
+  .stat .value { font-size: 18px; }
+
+  /* Chart heights: slightly reduced but still readable */
+  .panel-chart canvas { height: 200px; }
+  .chart-bubble canvas,
+  .chart-volume canvas,
+  .chart-heatmap canvas { height: 140px; }
+  .chart-timeline canvas { height: 160px; }
+  .chart-valuation canvas { height: 180px; }
+  .chart-utility canvas,
+  .chart-ownership canvas { height: 170px; }
+  .chart-messages canvas { height: 170px; }
+  .chart-trust canvas    { height: 180px; }
+
+  /* Agent cards: single column so nothing clips on narrow screens */
+  .agents-grid { grid-template-columns: 1fr; gap: 8px; }
+  .agent-card { padding: 10px 12px; }
+  .agent-card .agent-name { font-size: 12px; }
+
+  /* Order book + trade feed: cap height since they're no longer
+     pinned to a tall sibling in the same grid row */
+  .panel-book { max-height: 300px; }
+  .panel-feed { max-height: 340px; }
+
+  /* Figure captions: tighten for mobile */
+  .panel.figure { padding: 12px 14px 14px; gap: 10px; }
+  .panel.figure .fig-head { gap: 8px; padding-bottom: 6px; }
+  .panel.figure .fig-eq { font-size: 12px; padding: 8px 10px; min-height: 36px; }
+  .panel.figure .fig-note { padding: 8px 10px 10px; }
+  .panel.figure .fig-note-list { gap: 4px 10px; font-size: 10px; }
+
+  /* Touch: hide hover-only tooltips; prevent iOS zoom on inputs. */
+  .param-row[data-tip]::after,
+  .param-head[data-tip]::after { display: none; }
+  .ai-config .input-text,
+  .ai-config select.input-text,
+  .agent-card .endow-input { font-size: 16px; }
+
+  /* ── Glossary ──
+     Tables wrap term column and tighten cell padding so nothing
+     overflows the viewport. */
+  .glossary-wrap { padding: 16px 12px 36px; }
+  .glossary-wrap > h2 { font-size: 15px; margin-bottom: 16px; padding-bottom: 10px; }
+  .gloss-section { margin-bottom: 22px; }
+  .gloss-section > h3 { font-size: 10px; margin-bottom: 8px; }
+  .gloss-table { font-size: 11px; border-radius: 6px; }
+  .gloss-table thead th { padding: 8px 10px; font-size: 9px; }
+  .gloss-table tbody td { padding: 7px 10px; }
+  .gloss-table td.term { white-space: normal; min-width: 0; word-break: break-word; }
+  .plot-desc { padding: 10px 12px; gap: 10px; border-radius: 6px; }
+  .plot-icon { width: 28px; height: 28px; font-size: 11px; }
+  .plot-info h4 { font-size: 12px; }
+  .plot-info p { font-size: 11px; }
+
+  /* ── Architecture ──
+     Tighter padding, smaller header type, and the SVG scales to fit
+     the viewport width (overflow-x: auto catches anything that
+     genuinely can't fit). Definition cards and their formula blocks
+     get compact treatment to avoid horizontal overflow. */
+  .arch-wrap { padding: 16px 12px 36px; }
+  .arch-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arch-header h2 { font-size: 15px; }
+  .arch-desc { font-size: 11px; }
+  .arch-figure { margin: 0 0 28px; }
+  .arch-fig-header { gap: 8px; }
+  .arch-fig-header figcaption { font-size: 11.5px; }
+  .btn-drawio { padding: 6px 10px; font-size: 11px; gap: 6px; }
+  .btn-drawio svg { width: 14px; height: 14px; }
+  .arch-svg-container { padding: 4px 0 16px; }
+  .arch-defs { gap: 10px; }
+  .arch-def-card {
+    padding: 10px 12px 12px;
+    border-radius: 6px;
+  }
+  .arch-def-card h4 { font-size: 12px; }
+  .arch-def-card .role { font-size: 9px; margin-bottom: 6px; }
+  .arch-def-card .body { font-size: 11px; line-height: 1.55; }
+  .arch-def-card .body code { font-size: 10px; padding: 0 3px; }
+  .arch-def-card .formula {
+    padding: 8px 10px;
+    margin: 4px 0 8px;
+    font-size: 11px;
+    border-radius: 4px;
+  }
+  .arch-def-card .formula .katex { font-size: 0.92em; }
+
+  /* ── Slides ──
+     Full mobile-first treatment: edge-to-edge viewport with compact
+     padding so content fills the screen. Multi-col grids all collapse
+     to single columns. Typography scaled for comfortable reading on a
+     375px viewport. Toolbar and nav controls wrap to two rows. */
+  .slide-three-col { grid-template-columns: 1fr; }
+  .slide-two-col   { grid-template-columns: 1fr; }
+  .slide-class-grid { grid-template-columns: 1fr; }
+  .slides-wrap { padding: 12px 10px 36px; }
+  .slides-toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    border-radius: 6px;
+  }
+  .slides-counter { font-size: 11px; }
+  .slides-nav { flex-wrap: wrap; gap: 4px; }
+  .slides-btn { min-width: 32px; height: 28px; padding: 0 8px; font-size: 12px; border-radius: 4px; }
+  .slides-viewport {
+    min-height: auto;
+    padding: 18px 14px;
+    border-radius: 8px;
+  }
+  .slide-body { gap: 14px; }
+  .slide-title { font-size: 19px; line-height: 1.3; }
+  .slide-subtitle { font-size: 12px; }
+  .slide-heading { font-size: 15px; padding-bottom: 8px; }
+  .slide-text { font-size: 12.5px; line-height: 1.6; }
+  .slide-big { font-size: 16px; line-height: 1.45; }
+  .slide-note-sm { font-size: 10px; }
+  .slide-sm { font-size: 10px; }
+  .slide-card { padding: 10px 12px; border-radius: 6px; }
+  .slide-card h4 { font-size: 12px; margin-bottom: 6px; }
+  .slide-formula { font-size: 11px; padding: 4px 8px; border-radius: 4px; }
+  .slide-formula-card {
+    padding: 12px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .slide-formula-card .katex { font-size: 0.92em; }
+  .slide-env-badge { padding: 4px 10px; font-size: 10px; }
+  .slides-viewport.fullscreen { inset: 0; padding: 24px 14px; border-radius: 0; }
+  .slides-viewport.reading-mode { padding: 18px 14px; }
+  .slides-viewport.reading-mode .slide {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+  }
 }
+
+/* ---------- Architecture tab (math-focused) ---------- */
+/*
+ * Snapshot of the three paradigms' equation pipeline. SVG nodes use
+ * foreignObject to embed KaTeX-rendered math (same auto-render pass
+ * as .arch-def-card .formula blocks). Every node class has a CSS custom-property
+ * pair (--nc = accent/stroke, --nb = soft fill) so the theme-swap is
+ * free. Each figure's "Edit in draw.io" button opens the matching
+ * .drawio file in the public app.diagrams.net editor — hrefs are
+ * filled in at runtime by main.js via data-drawio attributes.
+ */
+.arch-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 28px 60px;
+}
+.arch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.arch-title-block { display: flex; flex-direction: column; gap: 4px; }
+.arch-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--fg-0);
+}
+.arch-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-2);
+  font-style: italic;
+}
+/* Publication-quality figure wrappers. Each .arch-figure holds an
+   SVG diagram, an "Edit in draw.io" button, and definition cards. */
+.arch-figure {
+  margin: 0 0 40px;
+  padding: 0;
+}
+.arch-fig-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.arch-fig-header figcaption {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-0);
+  letter-spacing: 0.01em;
+}
+.arch-fig-header .fig-num {
+  font-variant-numeric: lining-nums;
+  font-weight: 700;
+}
+.btn-drawio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg-1);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.btn-drawio:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-drawio svg { width: 16px; height: 16px; display: block; }
+.arch-svg-container {
+  width: 100%;
+  padding: 8px 0 28px;
+  overflow-x: auto;
+}
+.arch-svg-container svg {
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  color: var(--fg-3);
+}
+
+/* Node colour keys — each .n-* class binds --nc (accent/stroke) and
+   --nb (soft background). Add a new category by defining both vars
+   and then the shared .n rect / .n text.t rules below do the work. */
+.arch-diagram .n-paper  { --nc: var(--blue);   --nb: var(--blue-bg); }
+.arch-diagram .n-util   { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-eu     { --nc: var(--amber);  --nb: var(--amber-bg); }
+.arch-diagram .n-msg    { --nc: var(--green);  --nb: var(--green-bg); }
+.arch-diagram .n-trust  { --nc: var(--teal);   --nb: var(--teal-bg); }
+.arch-diagram .n-wang   { --nc: var(--pink);   --nb: var(--pink-bg); }
+.arch-diagram .n-book   { --nc: var(--purple); --nb: var(--purple-bg); }
+.arch-diagram .n-metric { --nc: var(--red);    --nb: var(--red-bg); }
+
+.arch-diagram .n rect {
+  fill: var(--nb);
+  stroke: var(--nc);
+  stroke-width: 1.6;
+}
+.arch-diagram .n text {
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.arch-diagram .n text.t {
+  fill: var(--nc);
+  font: 600 12px var(--font-ui);
+  letter-spacing: 0.01em;
+}
+.arch-diagram .n text.s {
+  fill: var(--fg-2);
+  font: 10px var(--font-ui);
+}
+/* Equation nodes — slightly tighter, mono-ish */
+.arch-diagram .n-eq text.t {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, var(--font-ui);
+  font-size: 11px;
+}
+.arch-diagram .n-eq text.s {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, var(--font-ui);
+  font-size: 10px;
+}
+/* KaTeX-rendered nodes via foreignObject inside the architecture SVG */
+.arch-diagram foreignObject .fo-node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  overflow: hidden;
+}
+.arch-diagram foreignObject .fo-t {
+  font: 600 12px/1.4 var(--font-ui);
+  color: var(--nc);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.arch-diagram foreignObject .fo-s {
+  font: 10px/1.4 var(--font-ui);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.arch-diagram foreignObject .katex { font-size: 1em; }
+
+/* Paradigm group frames — soft rectangles behind each cluster of nodes.
+   Paper constants (blue) / strategies (green) / Wang overlay (pink, dashed)
+   / market (amber). The Wang overlay is dashed to signal "optional". */
+.arch-diagram .arch-group rect {
+  fill: none;
+  stroke-width: 1.2;
+  stroke-dasharray: 0;
+  opacity: 0.85;
+}
+.arch-diagram .arch-group.g-paper  rect { stroke: var(--blue);  fill: color-mix(in srgb, var(--blue-bg)  45%, transparent); }
+.arch-diagram .arch-group.g-strat  rect { stroke: var(--amber); fill: color-mix(in srgb, var(--amber-bg) 30%, transparent); }
+.arch-diagram .arch-group.g-plan   rect { stroke: var(--green); fill: color-mix(in srgb, var(--green-bg) 25%, transparent); }
+.arch-diagram .arch-group.g-wang   rect { stroke: var(--pink);  fill: color-mix(in srgb, var(--pink-bg)  45%, transparent); stroke-dasharray: 5 4; }
+.arch-diagram .arch-group.g-market rect { stroke: var(--amber); fill: color-mix(in srgb, var(--amber-bg) 35%, transparent); }
+.arch-diagram .arch-group .g-label {
+  text-anchor: middle;
+  font: 700 10px var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.arch-diagram .arch-group.g-paper  .g-label { fill: var(--blue); }
+.arch-diagram .arch-group.g-strat  .g-label { fill: var(--amber); }
+.arch-diagram .arch-group.g-plan   .g-label { fill: var(--green); }
+.arch-diagram .arch-group.g-wang   .g-label { fill: var(--pink); }
+.arch-diagram .arch-group.g-market .g-label { fill: var(--amber); }
+
+/* Core dataflow connectors. color is inherited from the svg element
+   (var(--fg-3)) so light / dark switches sweep the whole diagram in
+   a single variable resolution. */
+.arch-diagram .link {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  marker-end: url(#arch-arrow);
+}
+/* AIPE overlay connector (ai.js → Utility prior). Dashed + pink to
+   signal that it only fires when paradigm === 'wang' and an API key is
+   provided, and that it overrides the deterministic prior block. */
+.arch-diagram .link-wang {
+  stroke: var(--pink);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.5;
+}
+
+/* Definition cards below the diagram. Responsive 3-col grid that
+   collapses at the 1100 / 700 breakpoints. Each card reuses the
+   node colour key so the colour-encoded module group is consistent
+   between the SVG and the card stack. */
+.arch-defs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.arch-def-card {
+  padding: 14px 16px 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--fg-3);
+  border-radius: 8px;
+  transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.arch-def-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+.arch-def-card h4 {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg-0);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.arch-def-card .role {
+  margin: 0 0 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+  font-weight: 600;
+}
+.arch-def-card .body {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--fg-1);
+}
+.arch-def-card .body code {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fg-0);
+}
+/* KaTeX formula block. One per card by default; a card can stack two
+   formula blocks (e.g. the EU scoring card) and they'll space evenly. */
+.arch-def-card .formula {
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--fg-0);
+}
+.arch-def-card .formula + .formula { margin-top: -2px; }
+.arch-def-card .formula .katex { font-size: 1.02em; }
+.arch-def-card .formula .katex-display {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.arch-def-card.card-paper  { border-left-color: var(--blue); }
+.arch-def-card.card-paper  h4 { color: var(--blue); }
+.arch-def-card.card-strat  { border-left-color: var(--green); }
+.arch-def-card.card-strat  h4 { color: var(--green); }
+.arch-def-card.card-ll     { border-left-color: var(--amber); }
+.arch-def-card.card-ll     h4 { color: var(--amber); }
+.arch-def-card.card-wang   { border-left-color: var(--pink); }
+.arch-def-card.card-wang   h4 { color: var(--pink); }
+.arch-def-card.card-metric { border-left-color: var(--red); }
+.arch-def-card.card-metric h4 { color: var(--red); }
+
+/* Sample-prompt block (Figure 5). A fixed-height scrollable monospace
+   box reproducing verbatim the system/user prompt that AI.getPlanBeliefs
+   ships to the LLM. Retains the surrounding card's colour key via the
+   parent .card-wang accent. */
+.arch-def-card .prompt-sample {
+  margin: 6px 0 0;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: 11.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fg-0);
+  overflow: auto;
+  max-height: 460px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
+}
+@media (max-width: 700px) {
+  .arch-def-card .prompt-sample {
+    font-size: 10.5px;
+    padding: 10px 12px;
+    max-height: 360px;
+  }
+}
+
+/* ---------- Glossary tab ---------- */
+/*
+ * Reference section for every abbreviation, symbol, figure, and source
+ * paper used in the simulator. Four gloss-sections stacked vertically;
+ * each section has a heading + a full-width table (or a flex list for
+ * the figure descriptions). KaTeX renders the math cells via main.js
+ * ._renderMath(), triggered on tab switch.
+ */
+.glossary-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 28px 60px;
+}
+.glossary-wrap > h2 {
+  margin: 0 0 26px;
+  padding-bottom: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fg-0);
+  border-bottom: 1px solid var(--border);
+}
+.gloss-section {
+  margin-bottom: 34px;
+}
+.gloss-section > h3 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.gloss-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.gloss-table thead th {
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.gloss-table tbody td {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-1);
+  vertical-align: top;
+}
+.gloss-table tbody tr:first-child td { border-top: 0; }
+.gloss-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--bg-2) 55%, transparent); }
+.gloss-table td.term {
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+  color: var(--fg-0);
+  min-width: 90px;
+}
+.gloss-table td.term.math {
+  font-family: var(--font-ui);
+  font-weight: 500;
+}
+
+/* Figure-description rows — each is a flex card with a coloured number
+   circle and a two-line title/body block. */
+.plot-desc {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.plot-desc:last-child { margin-bottom: 0; }
+.plot-icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 13px var(--font-ui);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.plot-info { flex: 1 1 auto; }
+.plot-info h4 {
+  margin: 0 0 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-0);
+}
+.plot-info p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--fg-1);
+}
+
+/* ---------- Slides tab ---------- */
+/*
+ * Presentation mode. Responsive flex viewport (no fixed aspect ratio)
+ * — one active .slide at a time, navigated with prev/next buttons or
+ * keyboard arrows. Fullscreen mode fixes the viewport to the whole
+ * window; reading mode unhides every slide and stacks them for
+ * scrolling or printing. Page size is intentionally NOT hard-coded
+ * to 16:9 so the slides adapt to the host window rather than showing
+ * black bars.
+ */
+.slides-wrap {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 28px 60px;
+}
+.slides-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.slides-counter {
+  font: 600 12px var(--font-ui);
+  color: var(--fg-2);
+  letter-spacing: 0.05em;
+}
+.slides-counter #slide-cur { color: var(--fg-0); }
+.slides-nav {
+  display: flex;
+  gap: 6px;
+}
+.slides-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg-1);
+  font: 600 14px var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.slides-btn:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.slides-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.slides-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.slides-viewport {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 560px;
+  padding: 40px 48px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.slide {
+  display: none;
+  flex: 1 1 auto;
+  width: 100%;
+  animation: slide-fade 0.24s var(--ease);
+}
+.slide.active { display: flex; }
+@keyframes slide-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+.slide-body.slide-center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.slide-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fg-0);
+}
+.slide-subtitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--fg-2);
+  font-style: italic;
+}
+.slide-heading {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--fg-0);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.slide-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--fg-1);
+  max-width: 900px;
+}
+.slide-center .slide-text { margin: 0 auto; }
+.slide-note-sm {
+  margin: 0;
+  font-size: 11px;
+  color: var(--fg-3);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.slide-sm {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+.slide-big {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--fg-0);
+  line-height: 1.5;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Formula blocks — .slide-formula is inline / compact,
+   .slide-formula-card is a bordered block for display equations. */
+.slide-formula {
+  font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--fg-0);
+  background: var(--bg-2);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: inline-block;
+}
+.slide-formula-card {
+  padding: 18px 22px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 14px;
+  overflow-x: auto;
+}
+.slide-formula-card .katex-display { margin: 0; }
+.slide-formula .katex { font-size: 1em; }
+
+/* Card layouts inside slides. slide-card is a soft bordered block; the
+   *-col grids lay multiple cards side-by-side; slide-highlight adds a
+   coloured left-border accent. */
+.slide-card {
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.slide-card h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-0);
+}
+.slide-card .slide-formula { display: block; margin-top: 4px; }
+.slide-highlight { border-left: 3px solid var(--accent); }
+.slide-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.slide-three-col {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.slide-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+/* Paradigm env badges — pill labels used on the title / closing slides. */
+.slide-env-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.slide-env-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: 600 11px var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.slide-env-badge.slide-dlm  { color: var(--blue);  }
+.slide-env-badge.slide-ll   { color: var(--amber); }
+.slide-env-badge.slide-wang { color: var(--pink);  }
+
+/* Fullscreen mode — lifts the viewport out of the normal flow and
+   fills the window. z-index above everything else. The toolbar stays
+   in its normal spot; main.js adds a subtle overlay so the underlying
+   page doesn't distract. */
+.slides-viewport.fullscreen {
+  position: fixed;
+  inset: 32px;
+  z-index: 1000;
+  padding: 60px 80px;
+  min-height: unset;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+.slides-fs-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  backdrop-filter: blur(3px);
+}
+
+/* Reading mode — unhides every slide and stacks them vertically with
+   generous spacing. The viewport becomes a long scroll column; print
+   reuses this mode via @media print below. */
+.slides-viewport.reading-mode {
+  display: block;
+  min-height: unset;
+  padding: 32px 48px;
+}
+.slides-viewport.reading-mode .slide {
+  display: flex;
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px dashed var(--border);
+  animation: none;
+  page-break-after: always;
+}
+.slides-viewport.reading-mode .slide:last-child {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+/* Print — force reading mode, full bleed, one slide per page. */
+@media print {
+  .app-header, .plan-switch, .nav-tabs, .controls { display: none !important; }
+  .tab-pane { display: none !important; }
+  #tab-slides { display: block !important; }
+  .slides-toolbar { display: none !important; }
+  .slides-viewport {
+    display: block;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    min-height: unset;
+    background: transparent;
+  }
+  .slide {
+    display: flex !important;
+    page-break-after: always;
+    padding: 24px;
+    animation: none;
+  }
+  .slide:last-child { page-break-after: auto; }
+}
+@page { size: A4 landscape; margin: 1cm; }
+
+/* Tablet breakpoint — 701–900px the three/two-col grids collapse and
+   the slide title scales down. Phone widths (≤700px) apply stricter
+   rules in the main mobile block above, so this range is bounded on
+   the low end to stop it from overriding them via source order. */
+@media (min-width: 701px) and (max-width: 900px) {
+  .slide-three-col { grid-template-columns: 1fr; }
+  .slide-two-col   { grid-template-columns: 1fr; }
+  .slide-title     { font-size: 24px; }
+  .slide-heading   { font-size: 18px; }
+  .slides-viewport { padding: 24px 20px; min-height: 420px; }
+}
+
+/* ---------- Scrollbars ---------- */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--bg-3); }

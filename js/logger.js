@@ -1,158 +1,97 @@
 'use strict';
 
 /* =====================================================================
-   logger.js — Per-agent opt-in tracing + bounded aggregate ring buffer.
+   logger.js — Append-only trace + snapshot store.
 
-   At N=100 the old "append every agent's snapshot every tick" pattern
-   produces ~720 × 100 = 72 000 snapshots per session. The new model
-   splits storage:
+   Streams recorded by the simulation (all append-only so replay can
+   slice them at a snapshot's recorded length):
 
-     traceStore[agentId] → per-decision full trace, ONLY for agents with
-                           `agent.traced === true`. Runtime-toggleable.
-     aggregateStore      → fixed-size ring buffer of per-tick cohort
-                           aggregates (wealth/valuation quantiles,
-                           action histogram, regulator state).
-     events              — sparse event log kept in full.
-     roundFinalCash      — payoff accounting per round.
+     * traces              — one record per agent decision
+     * snapshots           — indexed by tick; enough state to rebuild
+                             the UI at that moment. Large arrays are
+                             not copied; length fields are recorded.
+     * events              — dividend payments, period transitions
+     * messages            — inter-agent broadcasts (utility agents)
+     * valuationHistory    — per-tick per-agent {trueV, subjV, reportedV}
+     * utilityHistory      — per-tick per-agent {wealth, utility, riskPref}
+     * decisionEvaluations — per-decision EU candidate table
+     * beliefChanges       — per-update {prior, posterior, mode, source}
+     * trustHistory        — per-period trust matrix snapshot
+
+   Trace shape (base):
+   {
+     timestamp: tick,
+     period,
+     agentId, agentName, agentType,
+     state:     { cash, inventory, estimatedValue, observedPrice },
+     decision:  { type, price, quantity },
+     reasoning: { ruleUsed, expectedProfit, triggerCondition,
+                  utility?, beliefMode?, receivedMsgs? },
+     filled:    quantity actually executed at submission time
+   }
+
+   Extended streams are empty for legacy populations — all downstream
+   consumers (Replay, UI) must handle empty arrays gracefully.
    ===================================================================== */
 
 class Logger {
-  constructor(config, deps) {
-    this.config           = config;
-    this.deps             = deps;
-    this.traceStore       = {};
-    this.aggregateStore   = new RingBuffer(config.aggregateWindow || 10000);
-    this.events           = [];
-    this.roundFinalCash   = [];
-    this.archivedTraces   = {};
-    this.maxTracePerAgent = config.maxTracePerAgent || 5000;
+  constructor() {
+    this.traces              = [];
+    this.snapshots           = [];   // index by tick: snapshots[tick] = {...}
+    this.events              = [];
+    this.messages            = [];
+    this.valuationHistory    = [];
+    this.utilityHistory      = [];
+    this.decisionEvaluations = [];
+    this.beliefChanges       = [];
+    this.trustHistory        = [];
+    // DLM 2005 payoff tracking. The Engine snapshots each agent's
+    // final cash holdings at the end of every round (after the last
+    // dividend has been paid and before the round-end reset rewinds
+    // cash to the spec). Indexed by round: roundFinalCash[r-1] is a
+    // {agentId: cash} map. Session payoff is the sum across rounds
+    // plus the $5 (= 500¢) show-up fee, exactly as in DLM 2005.
+    this.roundFinalCash      = [];
+    // LLM prompt/response audit trail for Plans II/III. Each entry
+    // records the system prompt, user prompt, raw response, and parsed
+    // action for one agent at one period boundary. Empty for Plan I.
+    this.llmCalls            = [];
   }
 
-  recordTrace(id, rec) {
-    if (!this.traceStore[id]) this.traceStore[id] = [];
-    this.traceStore[id].push(rec);
-    if (this.traceStore[id].length > this.maxTracePerAgent) {
-      if (!this.archivedTraces[id]) this.archivedTraces[id] = [];
-      this.archivedTraces[id].push(this.traceStore[id].shift());
-    }
+  logTrace(trace)         { this.traces.push(trace); }
+  logEvent(event)         { this.events.push(event); }
+  logMessage(msg)         { this.messages.push(msg); }
+  logValuation(entry)     { this.valuationHistory.push(entry); }
+  logUtility(entry)       { this.utilityHistory.push(entry); }
+  logEvaluation(entry)    { this.decisionEvaluations.push(entry); }
+  logBeliefChange(entry)  { this.beliefChanges.push(entry); }
+  logTrust(entry)         { this.trustHistory.push(entry); }
+  logRoundFinalCash(round, byAgent) { this.roundFinalCash[round - 1] = byAgent; }
+  logLLMCall(entry)       { this.llmCalls.push(entry); }
+  snapshot(s)             { this.snapshots[s.tick] = s; }
+
+  clear() {
+    this.traces              = [];
+    this.snapshots           = [];
+    this.events              = [];
+    this.messages            = [];
+    this.valuationHistory    = [];
+    this.utilityHistory      = [];
+    this.decisionEvaluations = [];
+    this.beliefChanges       = [];
+    this.trustHistory        = [];
+    this.roundFinalCash      = [];
+    this.llmCalls            = [];
   }
 
-  recordEvent(type, payload) { this.events.push({ type, ...payload }); }
-
-  recordAggregate(market, agentList, regulator, fvRef) {
-    const wealths = [];
-    const vals    = [];
-    const actions = { hold: 0, bid: 0, ask: 0 };
-    for (const a of agentList) {
-      const v = a.subjectiveV != null ? a.subjectiveV : (fvRef || 0);
-      wealths.push(a.cash + a.inventory * v);
-      vals.push(v);
-      const act = a.lastAction || 'hold';
-      if (act in actions) actions[act]++;
-      else actions.hold++;
-    }
-    wealths.sort((a, b) => a - b);
-    vals.sort((a, b) => a - b);
-    const q = (arr, p) => arr.length ? arr[Math.min(arr.length - 1, Math.floor(p * arr.length))] : 0;
-    const mean = wealths.length ? wealths.reduce((s, x) => s + x, 0) / wealths.length : 0;
-    const sp   = market.sessionPeriod();
-    this.aggregateStore.push({
-      tick:   market.tick,
-      round:  market.round,
-      period: market.period,
-      price:  market.lastPrice,
-      fvRef,
-      wealth: {
-        mean,
-        p25: q(wealths, 0.25), p50: q(wealths, 0.5), p75: q(wealths, 0.75),
-        min: wealths[0] || 0,
-        max: wealths[wealths.length - 1] || 0,
-      },
-      valuation: { p25: q(vals, 0.25), p50: q(vals, 0.5), p75: q(vals, 0.75) },
-      actions,
-      regActive:    regulator.isActive(market.tick),
-      regRatio:     regulator.currentRatio(),
-      volumePeriod: market.volumeByPeriod[sp] || 0,
-    });
-  }
-
-  recordRoundFinalCash(round, agentList) {
-    if (!this.roundFinalCash[round - 1]) this.roundFinalCash[round - 1] = {};
-    for (const a of agentList) this.roundFinalCash[round - 1][a.id] = a.cash;
-  }
-
-  toggleTrace(id, agents) {
-    const a = agents[id];
-    if (!a) return false;
-    a.traced = !a.traced;
-    if (!this.traceStore[id]) this.traceStore[id] = [];
-    return a.traced;
-  }
-
-  getTrace(id) {
-    return (this.archivedTraces[id] || []).concat(this.traceStore[id] || []);
-  }
-
-  aggregates() { return this.aggregateStore.toArray(); }
-
-  aggregateAt(tick) {
-    const arr = this.aggregateStore.toArray();
-    for (let i = arr.length - 1; i >= 0; i--) if (arr[i].tick <= tick) return arr[i];
+  /** Nearest snapshot at or before the requested tick. */
+  getSnapshot(tick) {
+    for (let t = tick; t >= 0; t--) if (this.snapshots[t]) return this.snapshots[t];
     return null;
   }
 
-  exportSession() {
-    return {
-      events:         this.events,
-      aggregates:     this.aggregateStore.toArray(),
-      roundFinalCash: this.roundFinalCash,
-      tracedAgents:   Object.keys(this.traceStore).map(Number),
-      traceCounts:    Object.fromEntries(
-        Object.entries(this.traceStore).map(([k, v]) => [k, v.length])
-      ),
-    };
-  }
-
-  exportTraceCSV(id) {
-    const rows = this.getTrace(id);
-    if (!rows.length) return '';
-    const header = 'tick,round,period,action,fvHat,V,regActive,source,chosen\n';
-    const body = rows.map(r => {
-      const t = r.trace || {};
-      return [r.tick, r.round, r.period, r.action,
-              t.fvHat ?? '', t.V ?? '', t.regActive ?? '',
-              t.source ?? '', String(t.chosen ?? '').replace(/,/g, ';')].join(',');
-    }).join('\n');
-    return header + body;
-  }
-
-  clear() {
-    this.traceStore     = {};
-    this.archivedTraces = {};
-    this.aggregateStore.clear();
-    this.events         = [];
-    this.roundFinalCash = [];
+  /** All decisions filed at exactly this tick. */
+  tracesAt(tick) {
+    return this.traces.filter(t => t.timestamp === tick);
   }
 }
-
-class RingBuffer {
-  constructor(capacity) {
-    this.cap   = capacity;
-    this.buf   = [];
-    this._head = 0;
-  }
-  push(x) {
-    if (this.buf.length < this.cap) this.buf.push(x);
-    else { this.buf[this._head] = x; this._head = (this._head + 1) % this.cap; }
-  }
-  toArray() {
-    if (this.buf.length < this.cap) return this.buf.slice();
-    const out = new Array(this.buf.length);
-    for (let i = 0; i < this.buf.length; i++) out[i] = this.buf[(this._head + i) % this.cap];
-    return out;
-  }
-  clear() { this.buf = []; this._head = 0; }
-  get length() { return this.buf.length; }
-}
-
-if (typeof module !== 'undefined') module.exports = { Logger, RingBuffer };
