@@ -1512,9 +1512,26 @@ const UI = {
     ctx.fillStyle = this.theme.fg3;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    if (compact) {
+    // Build the set of tick indices once: regularly spaced at ~n/10
+    // plus the final row/column so the chart doesn't look truncated
+    // at #91 when the last id is #100.
+    const tickIdx = (() => {
+      if (!compact) return null;
       const stride = Math.max(1, Math.floor(n / 10));
-      for (let i = 0; i < n; i += stride) {
+      const set = new Set();
+      for (let k = 0; k < n; k += stride) set.add(k);
+      set.add(n - 1);
+      // Drop a penultimate tick if it would collide visually with the
+      // forced last tick (closer than half a stride).
+      if (set.has(n - 1) && set.has(n - 1 - (stride - 1)) && stride > 1) {
+        const second = [...set].sort((a, b) => b - a)[1];
+        if (n - 1 - second < Math.ceil(stride / 2)) set.delete(second);
+      }
+      return [...set].sort((a, b) => a - b);
+    })();
+
+    if (compact) {
+      for (const i of tickIdx) {
         ctx.fillText('#' + agentIds[i], rect.x - 4, rect.y + (i + 0.5) * cellH);
       }
     } else {
@@ -1526,8 +1543,7 @@ const UI = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     if (compact) {
-      const stride = Math.max(1, Math.floor(n / 10));
-      for (let j = 0; j < n; j += stride) {
+      for (const j of tickIdx) {
         ctx.fillText('#' + agentIds[j], rect.x + (j + 0.5) * cellW, rect.y + rect.h + 6);
       }
     } else {
