@@ -750,6 +750,10 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   flex-direction: column;
   gap: 16px;
 }
+/* Stretch Trade settings' 3 rows to match Risk preferences' 4 rows so
+   the two sibling panels land at the same height in the 2-col grid. */
+#psec-trade[open]       { align-self: stretch; }
+#psec-trade .psec-body  { height: 100%; justify-content: space-between; gap: 24px; }
 /* Native <details> collapse: the UA default hides non-summary children
    on :not([open]), but our .psec .psec-body rule above sets display:flex
    with higher specificity and wins — so without this explicit override
