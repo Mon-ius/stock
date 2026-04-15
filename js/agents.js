@@ -891,26 +891,30 @@ class UtilityAgent extends Agent {
       })),
     };
 
+    // BUY_NOW / SELL_NOW cross the book (passive = false); the
+    // BID_1/3 and ASK_1/3 improvements rest on the book and so are
+    // tagged passive = true — this keeps the Figure 5 legend honest
+    // across Plans I/II/III (passive ↔ dashed, aggressive ↔ solid).
     if (action === 'BUY_NOW' && ask && cash >= ask.price) {
-      return { type: 'bid', price: ask.price, quantity: 1, reasoning };
+      return { type: 'bid', price: ask.price, quantity: 1, passive: false, reasoning };
     }
     if (action === 'SELL_NOW' && bid && inv > 0) {
-      return { type: 'ask', price: bid.price, quantity: 1, reasoning };
+      return { type: 'ask', price: bid.price, quantity: 1, passive: false, reasoning };
     }
     if (action === 'BID_1' && bid && cash >= bid.price + 1) {
-      return { type: 'bid', price: round2(bid.price + 1), quantity: 1, reasoning };
+      return { type: 'bid', price: round2(bid.price + 1), quantity: 1, passive: true, reasoning };
     }
     if (action === 'BID_3' && bid && cash >= bid.price + 3) {
-      return { type: 'bid', price: round2(bid.price + 3), quantity: 1, reasoning };
+      return { type: 'bid', price: round2(bid.price + 3), quantity: 1, passive: true, reasoning };
     }
     if (action === 'ASK_1' && ask && inv > 0) {
-      return { type: 'ask', price: round2(ask.price - 1), quantity: 1, reasoning };
+      return { type: 'ask', price: round2(ask.price - 1), quantity: 1, passive: true, reasoning };
     }
     if (action === 'ASK_3' && ask && inv > 0) {
-      return { type: 'ask', price: round2(ask.price - 3), quantity: 1, reasoning };
+      return { type: 'ask', price: round2(ask.price - 3), quantity: 1, passive: true, reasoning };
     }
     if (action === 'HOLD') {
-      return { type: 'hold', reasoning };
+      return { type: 'hold', passive: false, reasoning };
     }
     return null;
   }
