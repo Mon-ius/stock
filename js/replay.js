@@ -44,6 +44,7 @@ const Replay = {
         initialCash:      a.initialCash,
         initialInventory: a.initialInventory,
         lastAction:       a.lastAction,
+        lastPassive:      !!a.lastPassive,
         roundsPlayed:     a.roundsPlayed | 0,
         replacementFresh: !!a.replacementFresh,
         endowmentType:    a.endowmentType,

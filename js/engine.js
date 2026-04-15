@@ -121,6 +121,7 @@ class Engine {
           type:     decision.type,
           price:    decision.price    ?? null,
           quantity: decision.quantity ?? null,
+          passive:  !!decision.passive,
         },
         reasoning: {
           ruleUsed:         decision.reasoning?.ruleUsed         ?? 'unknown',
@@ -179,9 +180,11 @@ class Engine {
           m.applyTrades(fills, this.agents);
           trace.filled = fills.reduce((s, t) => s + t.quantity, 0);
         }
-        agent.lastAction = decision.type;
+        agent.lastAction  = decision.type;
+        agent.lastPassive = !!decision.passive;
       } else {
-        agent.lastAction = 'hold';
+        agent.lastAction  = 'hold';
+        agent.lastPassive = false;
       }
     }
 
@@ -517,6 +520,7 @@ class Engine {
         initialCash:      a.initialCash,
         initialInventory: a.initialInventory,
         lastAction:       a.lastAction,
+        lastPassive:      !!a.lastPassive,
         // Endogenous-experience + DLM replacement tracking. Read by
         // the UI agent card to print a "rounds played" badge and the
         // fresh-replacement flag for the round-4 newcomers.

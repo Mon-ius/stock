@@ -518,13 +518,15 @@
     <div class="fig-eq"><span data-sym="actionSet"></span> <em>per-tick agent decision</em></div>
     <canvas id="chart-timeline"></canvas>
     <div class="legend">
-      <span><i class="lg bid"></i>Bid</span>
-      <span><i class="lg ask"></i>Ask</span>
+      <span><i class="lg bid"></i>Buy (cross bid)</span>
+      <span><i class="lg bid-passive"></i>Post bid</span>
+      <span><i class="lg ask"></i>Sell (cross ask)</span>
+      <span><i class="lg ask-passive"></i>Post ask</span>
       <span><i class="lg hold"></i>Hold</span>
       <span><i class="lg trade"></i>Executed</span>
     </div>
     <figcaption class="fig-caption">
-      <p>One row per agent, one mark per decision. Column colour encodes the action type and a small accent dot below the mark records whether the submitted order was filled on the same tick. Contiguous green runs identify accumulators; contiguous red runs identify distributors; holds are the market's waiting population.</p>
+      <p>One row per agent, one mark per decision. Column colour encodes one of five action classes &mdash; two aggressive (cross the book) and two passive (post a resting limit) plus hold. A small accent dot below the mark records whether the submitted order was filled on the same tick. Solid green/red runs identify book-crossing accumulators/distributors; the lighter dashed marks are passive quotes waiting for a counterparty.</p>
       <div class="fig-note">
         <h4 class="fig-note-title">Note</h4>
         <dl class="fig-note-list">
@@ -1309,7 +1311,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
       </div>
       <div class="plot-desc">
         <div class="plot-icon" style="background:var(--purple);">5</div>
-        <div class="plot-info"><h4>Agent Action Timeline</h4><p>One row per agent, one cell per decision. Encodes {bid, ask, hold} and whether the submitted order was filled on the same tick.</p></div>
+        <div class="plot-info"><h4>Agent Action Timeline</h4><p>One row per agent, one cell per decision. Encodes the five EU-candidate classes &mdash; {buy@$A_t$, sell@$B_t$, post bid, post ask, hold} &mdash; with a fill dot when the submitted order matched on the same tick.</p></div>
       </div>
       <div class="plot-desc">
         <div class="plot-icon" style="background:var(--teal);">6</div>

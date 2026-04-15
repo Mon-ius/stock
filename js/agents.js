@@ -854,11 +854,12 @@ class UtilityAgent extends Agent {
       })),
     };
 
-    if (chosen.type === 'hold') return { type: 'hold', reasoning };
+    if (chosen.type === 'hold') return { type: 'hold', passive: false, reasoning };
     return {
       type:     chosen.type,
       price:    chosen.price,
       quantity: chosen.quantity || 1,
+      passive:  !!chosen.passive,
       reasoning,
     };
   }

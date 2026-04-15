@@ -79,7 +79,7 @@ external libraries. Open `index.html` in any modern browser to run.
 | Bubble Magnitude                    | `|P_t − FV_t|` · `ρ_t = P_t / FV_t`       |
 | Trade Volume per Period             | `V_t = Σ q`                               |
 | Price × Period Density              | `H(P, t)`                                 |
-| Agent Action Timeline               | `a_{i,t} ∈ {bid, ask, hold}`              |
+| Agent Action Timeline               | `a_{i,t} ∈ {buy, sell, postBid, postAsk, hold}` |
 | Subjective Valuation (ext.)         | `V̂_{i,t}` vs reported `Ṽ_{i,t}`          |
 | Agent Utility Over Time (ext.)      | `u_{i,t} = U_i(w_t) / U_i(w_0)`           |
 | Asset Ownership Over Time (ext.)    | `q_{i,t}`, `Σ q_{i,t} = Q`                |

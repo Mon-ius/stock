@@ -1636,9 +1636,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   letter-spacing: 0.06em;
   font-weight: 700;
 }
-.agent-card .last-action.bid  { color: var(--green); background: var(--green-bg); }
-.agent-card .last-action.ask  { color: var(--red);   background: var(--red-bg); }
-.agent-card .last-action.hold { color: var(--fg-2);  background: var(--bg-2); }
+.agent-card .last-action.bid          { color: var(--green); background: var(--green-bg); }
+.agent-card .last-action.ask          { color: var(--red);   background: var(--red-bg); }
+.agent-card .last-action.bid-passive  { color: var(--green); background: var(--green-bg); opacity: 0.55; border: 1px dashed var(--green); }
+.agent-card .last-action.ask-passive  { color: var(--red);   background: var(--red-bg);   opacity: 0.55; border: 1px dashed var(--red); }
+.agent-card .last-action.hold         { color: var(--fg-2);  background: var(--bg-2); }
 .agent-card.fundamentalist { border-left: 2px solid var(--accent); }
 .agent-card.trend          { border-left: 2px solid var(--bubble); }
 .agent-card.random         { border-left: 2px solid var(--fg-2); }
@@ -2071,11 +2073,13 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   height: 10px;
   border-radius: 2px;
 }
-.legend i.bid   { background: var(--bid); }
-.legend i.ask   { background: var(--ask); }
-.legend i.hold  { background: var(--hold); }
-.legend i.trade { background: var(--accent); border-radius: 50%; }
-.legend i.lie   { background: transparent; border: 1.5px solid var(--bubble); border-radius: 50%; }
+.legend i.bid          { background: var(--bid); }
+.legend i.ask          { background: var(--ask); }
+.legend i.bid-passive  { background: var(--bid); opacity: 0.45; }
+.legend i.ask-passive  { background: var(--ask); opacity: 0.45; }
+.legend i.hold         { background: var(--hold); }
+.legend i.trade        { background: var(--accent); border-radius: 50%; }
+.legend i.lie          { background: transparent; border: 1.5px solid var(--bubble); border-radius: 50%; }
 
 /* ---------- Extended-mode controls ---------- */
 .ext-controls {

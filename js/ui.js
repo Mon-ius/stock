@@ -148,6 +148,36 @@ const UI = {
     return this.theme.fg2;
   },
 
+  /**
+   * Action-class color for the timeline chart. Collapses the EU
+   * candidate list back to the five presentation classes:
+   *   cross-bid (aggressive buy) · passive bid
+   *   cross-ask (aggressive sell) · passive ask · hold
+   * Passive orders render at 45% alpha so they read as "softer" than
+   * the book-crossing aggressive orders without needing extra hues.
+   */
+  _actionColor(decision) {
+    const t = decision && decision.type;
+    const p = !!(decision && decision.passive);
+    if (t === 'bid') return p ? this._fanColor(this.theme.green, 0.45) : this.theme.green;
+    if (t === 'ask') return p ? this._fanColor(this.theme.red,   0.45) : this.theme.red;
+    return this.theme.fg3;
+  },
+  _actionClass(decision) {
+    const t = decision && decision.type;
+    const p = !!(decision && decision.passive);
+    if (t === 'bid') return p ? 'bid-passive' : 'bid';
+    if (t === 'ask') return p ? 'ask-passive' : 'ask';
+    return 'hold';
+  },
+  _actionLabel(decision) {
+    const t = decision && decision.type;
+    const p = !!(decision && decision.passive);
+    if (t === 'bid') return p ? 'post bid' : 'buy';
+    if (t === 'ask') return p ? 'post ask' : 'sell';
+    return 'hold';
+  },
+
   init() {
     this.refreshTheme();
     // Stat cells
@@ -376,7 +406,9 @@ const UI = {
     this._toggleAgentStageLabel(editable);
 
     const html = Object.values(v.agents).map(a => {
-      const action = a.lastAction || 'hold';
+      const lastDecision = { type: a.lastAction || 'hold', passive: !!a.lastPassive };
+      const actionClass  = this._actionClass(lastDecision);
+      const actionLabel  = this._actionLabel(lastDecision);
       const isUtil = a.riskPref != null;
       const wealth = a.cash + a.inventory * (v.lastPrice != null ? v.lastPrice : v.fv);
       const init   = a.initialWealth != null ? a.initialWealth : (1000 + 3 * initialFV);
@@ -491,7 +523,7 @@ const UI = {
                   <div class="agent-type">${subtitle}${subtitleSym ? ` <span class="sym">${subtitleSym}</span>` : ''}</div>
                 </div>
                 <div class="agent-head-right">
-                  <span class="last-action ${action}">${action}</span>
+                  <span class="last-action ${actionClass}">${actionLabel}</span>
                   <span class="sym action-sym">${sym.action || ''}</span>
                 </div>
               </div>
@@ -1105,9 +1137,12 @@ const UI = {
     ctx.restore();
     this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
 
-    // One rect per agent decision, colored by action type.
-    const colors = { bid: this.theme.green, ask: this.theme.red, hold: this.theme.fg3 };
-    const mW     = Math.max(1.6, (rect.w / totalTicks) * 0.85);
+    // One rect per agent decision, colored by action class. The five
+    // classes match the EU candidate set in UtilityAgent.evaluate():
+    // hold, cross-bid (aggressive buy), cross-ask (aggressive sell),
+    // passive bid (resting limit buy), passive ask (resting limit sell).
+    const actionColor = this._actionColor.bind(this);
+    const mW          = Math.max(1.6, (rect.w / totalTicks) * 0.85);
 
     for (const tr of v.traces) {
       const rowIdx = ids.indexOf(tr.agentId);
@@ -1115,7 +1150,7 @@ const UI = {
       const x = Viz.mapX(rect, tr.timestamp, 0, totalTicks);
       const y = rect.y + rowIdx * rowH + rowH * 0.28;
       const h = rowH * 0.44;
-      ctx.fillStyle = colors[tr.decision.type] || this.theme.fg3;
+      ctx.fillStyle = actionColor(tr.decision);
       ctx.fillRect(x - mW / 2, y, mW, h);
       if (tr.filled > 0) {
         ctx.fillStyle = this.theme.accent;

@@ -172,9 +172,13 @@ const Sym = {
     _sub(_mo('Σ'), _row(_mi('trades'), _mo('∈'), _mi('t'))),
     _mi('q'),
   )),
-  actionSet: _wrap(_row(                                                      // a_{i,t} ∈ { bid, ask, hold }
+  actionSet: _wrap(_row(                                                      // a_{i,t} ∈ { buy, sell, postBid, postAsk, hold }
     _sub(_mi('a'), _it), _mo('∈'),
-    _mo('{'), _mi('bid'), _mo(','), _mi('ask'), _mo(','), _mi('hold'), _mo('}'),
+    _mo('{'),
+    _mi('buy'), _mo(','), _mi('sell'), _mo(','),
+    _mi('postBid'), _mo(','), _mi('postAsk'), _mo(','),
+    _mi('hold'),
+    _mo('}'),
   )),
   valCompare: _wrap(_row(                                                     // V̂_{i,t} vs Ṽ_{i,t}
     _sub(_hat(_mi('V')), _it), _mi('vs'), _sub(_tilde(_mi('V')), _it),
