@@ -931,7 +931,10 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    is visible at a glance even when the sliders are below the fold. */
 .comp-bar {
   display: flex;
-  height: 26px;
+  /* Match the 38 px visual rhythm of the Trade Settings tile rows
+     (.dlm-treatment-opt) so Risk Preferences aligns with its
+     grid-row neighbour. */
+  height: 38px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -946,7 +949,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   transition: flex 0.28s var(--ease);
 }
 .comp-bar .seg span {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
