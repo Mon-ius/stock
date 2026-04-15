@@ -1546,10 +1546,11 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
   /* Cap the visible area to ~3 rows of cards and scroll the rest. One
-     card is roughly 120 px tall (header + metrics + last-action row),
-     so 3 rows + 2 gutters ≈ 380 px. Without this the 100-agent roster
-     pushes every other panel below the fold. */
-  max-height: 380px;
+     card is roughly 130 px tall (header + metrics + utility formula
+     row + last-action row), so 3 rows + 2 gutters ≈ 410 px. Without
+     this the 100-agent roster pushes every other panel below the
+     fold. */
+  max-height: 410px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1608,7 +1609,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    regardless of which risk-typed formula (loving/neutral/averse) is
    shown, keeping the "click to view prompt" hint at the same Y. */
 .agent-card .metric-util,
-.agent-card .metric-util-val { height: 20px; overflow: hidden; align-content: center; }
+.agent-card .metric-util-val { height: 28px; overflow: hidden; align-content: center; }
 /* Paper-symbol wrapper. Real math typography (font selection,
    sub/sup sizing, baseline shift) is delegated to the browser's
    native MathML engine — this rule only paints the wrapper a muted
@@ -2299,12 +2300,12 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .chart-trust canvas    { height: 280px; }
 
   /* Agent cards: single column so nothing clips on narrow screens.
-     At one column per row, cap visible area to 3 cards (~110 px each
-     + 2 × 8 px gutters ≈ 346 px). */
+     At one column per row, cap visible area to 3 cards (~120 px each
+     + 2 × 8 px gutters ≈ 376 px). */
   .agents-grid {
     grid-template-columns: 1fr;
     gap: 8px;
-    max-height: 346px;
+    max-height: 376px;
   }
   .agent-card { padding: 10px 12px; }
   .agent-card .agent-name { font-size: 12px; }
