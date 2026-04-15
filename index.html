@@ -94,22 +94,6 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="99" step="1" value="0">
           </div>
-          <div class="param-row dlm-treatment-row">
-            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV_t · (1 + δᵢ · β). δᵢ ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and β defaults to 0.15. The tilt bᵢ = δᵢ · β is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF bᵢ is zeroed and every agent starts from the true FV.">
-              <span>Prior Bias</span>
-              <label class="slide-toggle" for="p-applyBias">
-                <input type="checkbox" id="p-applyBias" checked>
-                <span class="slide-track"><span class="slide-thumb"></span></span>
-              </label>
-            </label>
-            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV_t · (1 + ε) where ε ~ U[−n, +n], n = 0.03 (±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
-              <span>Prior Noise</span>
-              <label class="slide-toggle" for="p-applyNoise">
-                <input type="checkbox" id="p-applyNoise" checked>
-                <span class="slide-track"><span class="slide-thumb"></span></span>
-              </label>
-            </label>
-          </div>
           <div class="param-row dlm-treatment-row" id="dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. R4-⅔ replaces ⅓ of the population in round 4; R4-⅓ replaces ⅔. One click of Start runs all 10 sessions. The two sizes scale with the N setting in Advanced settings (N = 100 ⇒ T20/T40, N = 6 ⇒ T2/T4).">
             <label class="dlm-treatment-opt">
               <input type="radio" name="dlm-treatment" value="20" checked>
@@ -256,6 +240,22 @@
             <label class="dlm-treatment-opt">
               <input type="radio" name="adv-n-total" value="6">
               <span><strong>N = 6</strong> · DLM 2005</span>
+            </label>
+          </div>
+          <div class="param-row dlm-treatment-row">
+            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV_t · (1 + δᵢ · β). δᵢ ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and β defaults to 0.15. The tilt bᵢ = δᵢ · β is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF bᵢ is zeroed and every agent starts from the true FV.">
+              <span>Prior Bias</span>
+              <label class="slide-toggle" for="p-applyBias">
+                <input type="checkbox" id="p-applyBias" checked>
+                <span class="slide-track"><span class="slide-thumb"></span></span>
+              </label>
+            </label>
+            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV_t · (1 + ε) where ε ~ U[−n, +n], n = 0.03 (±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
+              <span>Prior Noise</span>
+              <label class="slide-toggle" for="p-applyNoise">
+                <input type="checkbox" id="p-applyNoise" checked>
+                <span class="slide-track"><span class="slide-thumb"></span></span>
+              </label>
             </label>
           </div>
         </div>
