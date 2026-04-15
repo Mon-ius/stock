@@ -1505,7 +1505,10 @@ const UI = {
     // cellH ≈ 3 px).
     const compact = n > UI.FAN_THRESHOLD;
     const padL    = compact ? 30 : 66;
-    const padB    = compact ? 30 : 44;
+    // padB must clear the tick row (y = rect.y + rect.h + 6) AND the
+    // axisLabel('sender', 'bottom') glyph which Viz draws 34 px below
+    // the plot. A 30 px pad clipped the label; 44 px leaves headroom.
+    const padB    = compact ? 44 : 44;
     const rect    = Viz.plotRect(width, height, padL, 12, 14, padB);
 
     const cellW = rect.w / n;

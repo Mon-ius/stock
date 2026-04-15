@@ -1446,7 +1446,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .chart-utility canvas,
 .chart-ownership canvas { height: 200px; }
 .chart-messages canvas { height: 200px; }
-.chart-trust canvas    { height: 360px; }
+.chart-trust canvas    { height: 420px; }
 
 /* ---------- Order book ------------------------------------------
  * Mirrors the .panel-feed treatment: the panel is a flex column so
@@ -2301,7 +2301,7 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   .chart-utility canvas,
   .chart-ownership canvas { height: 170px; }
   .chart-messages canvas { height: 170px; }
-  .chart-trust canvas    { height: 280px; }
+  .chart-trust canvas    { height: 320px; }
 
   /* Agent cards: single column so nothing clips on narrow screens.
      At one column per row, cap visible area to 3 cards (~120 px each
