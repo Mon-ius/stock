@@ -170,11 +170,15 @@ const UI = {
     if (t === 'ask') return p ? 'ask-passive' : 'ask';
     return 'hold';
   },
+  // Canonical tokens from the EU action set
+  //   α ∈ { hold, buy@A_t, sell@B_t, bid, ask }
+  // where buy@A_t / sell@B_t are the book-crossing actions and bid /
+  // ask are the passive resting quotes (agents.js → evaluate()).
   _actionLabel(decision) {
     const t = decision && decision.type;
     const p = !!(decision && decision.passive);
-    if (t === 'bid') return p ? 'post bid' : 'buy';
-    if (t === 'ask') return p ? 'post ask' : 'sell';
+    if (t === 'bid') return p ? 'bid' : 'buy@A\u209c';
+    if (t === 'ask') return p ? 'ask' : 'sell@B\u209c';
     return 'hold';
   },
 
