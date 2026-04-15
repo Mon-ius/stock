@@ -250,4 +250,73 @@ const Viz = {
     const b = Math.round(200 - t * 170);
     return `rgba(${r},${g},${b},${0.25 + t * 0.6})`;
   },
+
+  /**
+   * Fan chart: median line with shaded IQR (p25..p75) + optional outer
+   * envelope (min..max). `series` shape:
+   *   [{ x, p25, p50, p75, min?, max? }, ...]
+   * Colors default to a translucent accent so multiple fans can overlay.
+   */
+  fanChart(ctx, rect, series, { xMin, xMax, yMin, yMax, color = '#6a8cff', envelopeColor }) {
+    if (!series.length) return;
+    const map = (v, lo, hi, off, span) => off + ((v - lo) / ((hi - lo) || 1)) * span;
+    const px = (x) => map(x, xMin, xMax, rect.x, rect.w);
+    const py = (y) => rect.y + rect.h - map(y, yMin, yMax, 0, rect.h);
+    // Outer envelope
+    if (envelopeColor && series[0].min != null) {
+      ctx.save();
+      ctx.fillStyle = envelopeColor;
+      ctx.beginPath();
+      ctx.moveTo(px(series[0].x), py(series[0].max));
+      for (let i = 1; i < series.length; i++) ctx.lineTo(px(series[i].x), py(series[i].max));
+      for (let i = series.length - 1; i >= 0; i--) ctx.lineTo(px(series[i].x), py(series[i].min));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    // IQR band
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(px(series[0].x), py(series[0].p75));
+    for (let i = 1; i < series.length; i++) ctx.lineTo(px(series[i].x), py(series[i].p75));
+    for (let i = series.length - 1; i >= 0; i--) ctx.lineTo(px(series[i].x), py(series[i].p25));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    // Median line
+    ctx.save();
+    ctx.strokeStyle = color.replace(/0?\.\d+\)/, '0.95)').replace('rgba', 'rgba') || color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < series.length; i++) {
+      const x = px(series[i].x), y = py(series[i].p50);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  },
+
+  /**
+   * N×N heatmap drawn as a single ImageData blit. `matrix` is a flat
+   * Float32Array of length n*n, values in [0,1]. Fast enough for
+   * N=200 (40 000 cells) redrawn at ~10 Hz.
+   */
+  drawHeatmap(ctx, rect, matrix, n, { colorFn } = {}) {
+    ctx.save();
+    ctx.strokeStyle = this.theme.frame;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
+    const color = colorFn || (t => this.heatColor(t));
+    const cellW = rect.w / n;
+    const cellH = rect.h / n;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const v = matrix[r * n + c];
+        ctx.fillStyle = color(v);
+        ctx.fillRect(rect.x + c * cellW, rect.y + r * cellH, Math.ceil(cellW), Math.ceil(cellH));
+      }
+    }
+    ctx.restore();
+  },
 };

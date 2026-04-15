@@ -1,30 +1,31 @@
 'use strict';
 
 /* =====================================================================
-   market.js — Order, Trade, OrderBook, Market
+   market.js — Order, Trade, OrderBook, Market.
 
-   A continuous double auction is implemented as:
-     1. Two sorted arrays (bids, asks) with price-time priority.
-     2. On every inbound order, match greedily against the opposite side
-        at the *resting* order's price until no cross remains.
-     3. Whatever quantity is left over is inserted into the book.
+   Continuous double auction with price-time priority. The Market owns
+   the book, an append-only trade log, a bounded price history ring
+   buffer, and the hook points where the Engine records per-tick data.
 
-   The Market also owns append-only history arrays (priceHistory, trades,
-   volumeByPeriod, dividendHistory). Nothing is ever mutated or removed
-   from these arrays, which is what lets Replay reconstruct any past
-   tick by slicing to a recorded length.
+   Dividend generation is delegated to `HMMDividend` — Market no longer
+   knows the per-period dividend distribution, only how to pay the
+   latest draw to every inventory holder. The fundamental value is NOT
+   a deterministic staircase in the counterfactual design; agents must
+   estimate it themselves (see estimator.js). The Market still exposes
+   `periodsRemaining()` as a primitive the estimators consume.
    ===================================================================== */
 
 class Order {
-  constructor(agentId, side, price, quantity, timestamp, period) {
+  constructor(agentId, side, price, quantity, timestamp, period, round) {
     this.id        = Order.nextId++;
     this.agentId   = agentId;
-    this.side      = side;       // 'bid' | 'ask'
+    this.side      = side;
     this.price     = price;
     this.quantity  = quantity;
     this.remaining = quantity;
-    this.timestamp = timestamp;  // tick number when submitted
+    this.timestamp = timestamp;
     this.period    = period;
+    this.round     = round;
   }
 }
 Order.nextId = 1;
@@ -45,32 +46,20 @@ class Trade {
 }
 Trade.nextId = 1;
 
-/**
- * Price-time priority order book.
- *   bids: sorted descending by price, ascending by timestamp
- *   asks: sorted ascending  by price, ascending by timestamp
- * A linear insert is O(n) but n is tiny (<= a few dozen resting orders
- * at any time in this sim), which keeps the implementation dead simple.
- */
 class OrderBook {
-  constructor() {
-    this.bids = [];
-    this.asks = [];
-  }
+  constructor() { this.bids = []; this.asks = []; }
 
   insert(order) {
     if (order.side === 'bid') {
       const idx = this.bids.findIndex(o =>
         o.price < order.price ||
-        (o.price === order.price && o.timestamp > order.timestamp)
-      );
+        (o.price === order.price && o.timestamp > order.timestamp));
       if (idx === -1) this.bids.push(order);
       else this.bids.splice(idx, 0, order);
     } else {
       const idx = this.asks.findIndex(o =>
         o.price > order.price ||
-        (o.price === order.price && o.timestamp > order.timestamp)
-      );
+        (o.price === order.price && o.timestamp > order.timestamp));
       if (idx === -1) this.asks.push(order);
       else this.asks.splice(idx, 0, order);
     }
@@ -87,90 +76,53 @@ class OrderBook {
   clear() { this.bids = []; this.asks = []; }
 }
 
-/**
- * Market — owns the book, the dividend process, and the append-only
- * time-series arrays used for charts and replay.
- *
- * The asset pays a per-period dividend d ∈ {0, 2·μ} with p = 0.5, so
- * E[d] = μ (configured as `dividendMean`, default 10). Fundamental value
- * at the *start* of period t is FV_t = μ × (T − t + 1): the remaining
- * expected dividend stream. After period T's dividend is paid the asset
- * is worthless.
- *
- * DLM 2005 nests T periods inside a *session* of `roundsPerSession`
- * consecutive markets ("rounds"). The Market therefore also tracks a
- * 1-indexed `round` counter; FV resets at the start of every round so
- * `priceHistory.fv` traces the saw-tooth in Figure 1 of the paper. The
- * per-period volume series is sized for the full session (rounds ×
- * periods + 2) and indexed by a global period
- * `g = (round − 1) · periods + period`, so a single array spans every
- * round end-to-end with no per-round slicing.
- */
 class Market {
-  constructor(config) {
+  constructor(config, hmm) {
     this.config          = config;
+    this.hmm             = hmm;
     this.book            = new OrderBook();
     this.trades          = [];
-    this.priceHistory    = [];                                     // { tick, period, round, price, fv, bid, ask }
+    // priceHistory is kept full-resolution inside a configurable window
+    // and downsampled to one-per-tick for long-run aggregates. For N=100
+    // runs on a 7 200-tick batch this is still just 7 200 entries, so
+    // we keep the append-only contract and let Logger do the downsample.
+    this.priceHistory    = [];
     const sessionPeriods = (config.roundsPerSession || 1) * config.periods;
     this.volumeByPeriod  = new Array(sessionPeriods + 2).fill(0);
-    this.dividendHistory = [];                                     // { period, round, value }
+    this.dividendHistory = [];
     this.round           = 1;
     this.period          = 1;
     this.tick            = 0;
     this.lastPrice       = null;
   }
 
-  /** Global 1-indexed period across the full session. */
   sessionPeriod(period = this.period, round = this.round) {
     return (round - 1) * this.config.periods + period;
   }
 
-  fundamentalValue(period = this.period) {
-    const remaining = Math.max(0, this.config.periods - period + 1);
-    return this.config.dividendMean * remaining;
+  periodsRemaining(period = this.period) {
+    return Math.max(0, this.config.periods - period + 1);
   }
 
-  /**
-   * Submit an order, matching it greedily against the book first and
-   * resting any remainder. Validates that the submitting agent has the
-   * cash / inventory to cover the worst-case fill; otherwise the order
-   * is rejected entirely (returns []).
-   */
   submitOrder(order, agent) {
-    if (order.side === 'ask') {
-      if (agent.inventory < order.remaining) return [];
-    } else {
-      if (agent.cash < order.price * order.remaining) return [];
-    }
+    if (order.side === 'ask' && agent.inventory < order.remaining) return [];
+    if (order.side === 'bid' && agent.cash < order.price * order.remaining) return [];
     const fills = this._match(order);
     if (order.remaining > 0) this.book.insert(order);
     return fills;
   }
 
-  /**
-   * Match against the opposite side. Self-match prevention: if the best
-   * opposite order is from the same agent, we cancel that resting order
-   * and continue to the next level (standard exchange behavior for
-   * wash-trade prevention).
-   */
   _match(order) {
     const fills = [];
     while (order.remaining > 0) {
       const side = order.side === 'bid' ? this.book.asks : this.book.bids;
       if (!side.length) break;
       const best = side[0];
-      const crosses = order.side === 'bid'
-        ? best.price <= order.price
-        : best.price >= order.price;
+      const crosses = order.side === 'bid' ? best.price <= order.price : best.price >= order.price;
       if (!crosses) break;
-      if (best.agentId === order.agentId) {
-        // Self-match: cancel the resting order, try the next level.
-        side.shift();
-        continue;
-      }
+      if (best.agentId === order.agentId) { side.shift(); continue; }
       const qty   = Math.min(order.remaining, best.remaining);
-      const price = best.price;                  // trade at the resting price
+      const price = best.price;
       order.remaining -= qty;
       best.remaining  -= qty;
       if (order.side === 'bid') {
@@ -183,7 +135,6 @@ class Market {
     return fills;
   }
 
-  /** Apply a list of executed trades: settle cash/inventory, update series. */
   applyTrades(trades, agents) {
     for (const t of trades) {
       this.trades.push(t);
@@ -198,25 +149,42 @@ class Market {
     }
   }
 
-  /** Draw the common dividend and credit every holder. */
-  payDividend(agents, rng = Math.random) {
-    const hi = this.config.dividendMean * 2;
-    const d  = rng() < 0.5 ? 0 : hi;
-    for (const a of Object.values(agents)) a.cash += d * a.inventory;
-    this.dividendHistory.push({ period: this.period, round: this.round, value: d });
-    return d;
+  /** Draw the HMM dividend, pay every holder, and hand the value to estimators. */
+  payDividend(agents, rng) {
+    const { dividend, regime } = this.hmm.step(rng);
+    for (const a of Object.values(agents)) {
+      a.cash += dividend * a.inventory;
+      if (typeof a.observeDividend === 'function') a.observeDividend(dividend);
+    }
+    this.dividendHistory.push({ period: this.period, round: this.round, value: dividend, regime });
+    return { dividend, regime };
   }
 
-  /** Record a per-tick point for the price-over-time series. */
-  recordTick() {
+  /** Record the tick. `fvRef` is the analytical reference FV from the regulator's estimator. */
+  recordTick(fvRef) {
     this.priceHistory.push({
       tick:   this.tick,
       period: this.period,
       round:  this.round,
       price:  this.lastPrice,
-      fv:     this.fundamentalValue(),
+      fvRef:  fvRef,
       bid:    this.book.bestBid() ? this.book.bestBid().price : null,
       ask:    this.book.bestAsk() ? this.book.bestAsk().price : null,
     });
+  }
+
+  /** Volume-weighted average price for the (round, period) pair. */
+  vwap(period = this.period, round = this.round) {
+    let num = 0, den = 0;
+    for (let i = this.trades.length - 1; i >= 0; i--) {
+      const t = this.trades[i];
+      if (t.period !== period || t.round !== round) {
+        if (t.round < round || (t.round === round && t.period < period)) break;
+        continue;
+      }
+      num += t.price * t.quantity;
+      den += t.quantity;
+    }
+    return den ? num / den : null;
   }
 }
