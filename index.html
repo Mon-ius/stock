@@ -110,14 +110,14 @@
               </label>
             </label>
           </div>
-          <div class="param-row dlm-treatment-row" data-tip="DLM 2005 10-session batch design (scaled to N = 100): 5 sessions with the selected first treatment, then 5 sessions with the other. T20 (R4-⅔) replaces 20 agents in round 4; T40 (R4-⅓) replaces 40. One click of Start runs all 10 sessions.">
+          <div class="param-row dlm-treatment-row" id="dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. R4-⅔ replaces ⅓ of the population in round 4; R4-⅓ replaces ⅔. One click of Start runs all 10 sessions. The two sizes scale with the N setting in Advanced settings (N = 100 ⇒ T20/T40, N = 6 ⇒ T2/T4).">
             <label class="dlm-treatment-opt">
               <input type="radio" name="dlm-treatment" value="20" checked>
-              <span><strong>First T20</strong> · R4-&#8532;</span>
+              <span><strong>First <span class="tx-small-label">T20</span></strong> · R4-&#8532;</span>
             </label>
             <label class="dlm-treatment-opt">
               <input type="radio" name="dlm-treatment" value="40">
-              <span><strong>First T40</strong> · R4-&#8531;</span>
+              <span><strong>First <span class="tx-big-label">T40</span></strong> · R4-&#8531;</span>
             </label>
           </div>
         </div>
@@ -239,6 +239,29 @@
 
 
       <!-- ============================================================
+           Advanced settings — non-paper tunables that change the
+           population scale. The N = 100 default keeps the thick-book
+           regime described in CLAUDE.md; N = 6 drops the simulator
+           into the original Dufwenberg–Lindqvist–Moore (2005) design
+           with T2/T4 round-4 treatments instead of T20/T40.
+           ============================================================ -->
+      <details class="psec const-sim" id="psec-advanced" open>
+        <summary>Advanced settings <span class="const-cite">population scale · treatment labels</span></summary>
+        <div class="psec-body">
+          <div class="param-row dlm-treatment-row" id="adv-n-total-row" data-tip="Switch the simulator population size N. N = 100 is the scaled regime (thick order book, T20/T40 round-4 treatments). N = 6 reverts to the original DLM 2005 six-subject market with the paper-faithful T2/T4 round-4 treatments. Changing this redraws every agent and resets the seed.">
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="adv-n-total" value="100" checked>
+              <span><strong>N = 100</strong> · scaled</span>
+            </label>
+            <label class="dlm-treatment-opt">
+              <input type="radio" name="adv-n-total" value="6">
+              <span><strong>N = 6</strong> · DLM 2005</span>
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============================================================
            Paper constants — fixed-by-design values from Dufwenberg,
            Lindqvist & Moore (2005), §I. Read-only card nested inside
            Experiment settings: the paper's experimental design pins
@@ -251,9 +274,9 @@
         <div class="psec-body">
           <dl class="const-list">
             <div class="const-item">
-              <dt>N <span class="const-val">= 100</span></dt>
+              <dt>N <span class="const-val" id="const-n-total">= 100</span></dt>
               <dd class="const-label">Subjects per session</dd>
-              <dd class="const-note">DLM 2005 &sect;I pins the original design at six subjects &mdash; &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; This simulator scales the population to N = 100 for a thicker order book while preserving the four-round session structure.<span class="const-src">§I, p. 1733 &middot; scaled in main.js</span></dd>
+              <dd class="const-note" id="const-n-note">DLM 2005 &sect;I pins the original design at six subjects &mdash; &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; This simulator scales the population to N = 100 for a thicker order book while preserving the four-round session structure.<span class="const-src">§I, p. 1733 &middot; scaled in main.js · switch in Advanced settings</span></dd>
             </div>
             <div class="const-item">
               <dt>rounds / session <span class="const-val">= 4</span></dt>

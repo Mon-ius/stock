@@ -332,11 +332,21 @@ const App = {
     });
     this._syncPlanButtons();
 
-    // DLM treatment radio buttons (T20 / T40).
+    // DLM treatment radio buttons (T20 / T40 at N = 100 — T2 / T4 at N = 6).
     document.querySelectorAll('input[name="dlm-treatment"]').forEach(radio => {
       radio.addEventListener('change', e => {
         this.treatmentSize = Number(e.target.value);
         this.reset();
+      });
+    });
+
+    // Advanced settings — population-scale switch (N = 100 scaled vs
+    // N = 6 DLM 2005 faithful). Rewrites mix, treatmentSize, treatment
+    // radio labels, and the paper-constants N display in one shot.
+    document.querySelectorAll('input[name="adv-n-total"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        const n = Number(e.target.value) || 100;
+        this.setTotalN(n);
       });
     });
 
@@ -650,6 +660,69 @@ const App = {
    * When F or T changes, clamp the other so F + T ≤ TOTAL_N,
    * derive U = TOTAL_N − F − T, and update the readouts + maxes.
    */
+  /**
+   * Round-4 replacement sizes for the selected population scale.
+   * N = 100 uses the simulator-scaled T20/T40 pair; N = 6 reverts to
+   * the DLM 2005 original T2/T4 pair. Both map onto the same
+   * R4-⅔ / R4-⅓ semantic labels.
+   */
+  _treatmentsFor(n) {
+    if (n === 6) return { small: 2,  big: 4,  smallLabel: 'T2',  bigLabel: 'T4'  };
+    return       { small: 20, big: 40, smallLabel: 'T20', bigLabel: 'T40' };
+  },
+
+  /**
+   * Switch the simulator population size. Rewrites every dependent
+   * tunable in lockstep so no downstream caller is left holding a
+   * stale N-derived value: mix shares, the F/T slider maxes and
+   * badge, the round-4 treatment radio set (values + visible labels),
+   * the paper-constants N display, and finally a full reset() so the
+   * engine rebuilds its agent roster at the new scale.
+   */
+  setTotalN(n) {
+    n = Number(n) || 100;
+    if (n !== 6 && n !== 100) n = 100;
+    this.TOTAL_N = n;
+    this.mix = { F: 0, T: 0, R: 0, U: n };
+
+    const tx = this._treatmentsFor(n);
+    this.treatmentSize = tx.small;
+
+    const elF = document.getElementById('p-count-f');
+    const elT = document.getElementById('p-count-t');
+    if (elF) { elF.max = String(Math.max(0, n - 1)); elF.value = '0'; this._updateSliderPct(elF); }
+    if (elT) { elT.max = String(Math.max(0, n - 1)); elT.value = '0'; this._updateSliderPct(elT); }
+    const outF = document.getElementById('v-count-f'); if (outF) outF.textContent = '0';
+    const outT = document.getElementById('v-count-t'); if (outT) outT.textContent = '0';
+    const outU = document.getElementById('v-util');    if (outU) outU.textContent = String(n);
+
+    const badge = document.getElementById('mix-total');
+    if (badge) badge.textContent = `(N = ${n})`;
+
+    const constN = document.getElementById('const-n-total');
+    if (constN) constN.textContent = `= ${n}`;
+    const constNote = document.getElementById('const-n-note');
+    if (constNote) {
+      constNote.innerHTML = n === 6
+        ? 'DLM 2005 &sect;I: &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; The simulator is currently running the paper-faithful six-subject population with T2/T4 round-4 treatments.<span class="const-src">§I, p. 1733 &middot; switch in Advanced settings</span>'
+        : 'DLM 2005 &sect;I pins the original design at six subjects &mdash; &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; This simulator scales the population to N = 100 for a thicker order book while preserving the four-round session structure.<span class="const-src">§I, p. 1733 &middot; scaled in main.js · switch in Advanced settings</span>';
+    }
+
+    const smallLabel = document.querySelector('.tx-small-label');
+    const bigLabel   = document.querySelector('.tx-big-label');
+    if (smallLabel) smallLabel.textContent = tx.smallLabel;
+    if (bigLabel)   bigLabel.textContent   = tx.bigLabel;
+    const radios = document.querySelectorAll('input[name="dlm-treatment"]');
+    if (radios.length >= 2) {
+      radios[0].value   = String(tx.small);
+      radios[1].value   = String(tx.big);
+      radios[0].checked = true;
+      radios[1].checked = false;
+    }
+
+    this.reset();
+  },
+
   _constrainMix() {
     const N = this.TOTAL_N;
     const elF = document.getElementById('p-count-f');
@@ -932,8 +1005,9 @@ const App = {
     }
 
     const SESSIONS = 10;
+    const tx              = this._treatmentsFor(this.TOTAL_N);
     const firstTreatment  = this.treatmentSize;
-    const secondTreatment = firstTreatment === 20 ? 40 : 20;
+    const secondTreatment = firstTreatment === tx.small ? tx.big : tx.small;
     this.batchResults = [];
     this._exportSessions = [];
     this._batchRunning = true;
@@ -962,7 +1036,7 @@ const App = {
       this.ctx.currentSession = this.currentSession;
 
       const sessionNum  = s + 1;
-      const txLabel     = treatment === 20 ? 'T20' : 'T40';
+      const txLabel     = treatment === tx.small ? tx.smallLabel : tx.bigLabel;
       const totalShares = this.TOTAL_N * 3;
 
       // Collect one round's metrics as soon as it finishes, so Table 2
@@ -1053,7 +1127,7 @@ const App = {
 
     return {
       session:    sessionNum,
-      treatment:  this.treatmentSize === 20 ? 'T20' : 'T40',
+      treatment:  (() => { const tx = this._treatmentsFor(this.TOTAL_N); return this.treatmentSize === tx.small ? tx.smallLabel : tx.bigLabel; })(),
       plan:       this.plan,
       seed:       this.seed,
       agentSpecs: (this._sessionOriginalSpecs || this.agentSpecs).map(s => ({ ...s })),
