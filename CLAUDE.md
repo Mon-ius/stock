@@ -22,7 +22,10 @@ engine.js     Simulation loop + seeded mulberry32 PRNG, dividend draws
   │
 market.js    ─ Order, Trade, OrderBook (price-time priority), Market
 agents.js    ─ Agent base + Fundamentalist/Trend/Random/DLMTrader/Utility +
-                sampling helpers. Decisions return order objects with a
+                sampling helpers. At runtime all 100 slots are
+                `UtilityAgent`; the F/T/R/DLMTrader classes are retained
+                for the legacy presets and the Strict-DLM/AIPE paradigms
+                described below. Decisions return order objects with a
                 reasoning trace attached. `DLMTrader` has a single class
                 with a two-branch `decide()` gated on an endogenous
                 `roundsPlayed` counter — it starts at 0 and is incremented
@@ -32,12 +35,26 @@ agents.js    ─ Agent base + Fundamentalist/Trend/Random/DLMTrader/Utility +
                 `roundsPlayed > 0`; experience is purely procedural.
 messaging.js ─ Message bus + trust tracker (only used by UtilityAgent)
 utility.js   ─ UtilityAgent belief/valuation model + UTILITY_DEFAULTS
+ai.js        ─ AIPE (Wang) paradigm only: thin wrapper around the OpenAI
+                /v1/chat/completions API. `App.start()` awaits
+                `AI.getPsychAnchors()` when paradigm === 'wang' and a key
+                is set, then writes each returned anchor to the agent's
+                `psychAnchor` so the first order reflects the LLM's prior
+                instead of `FV × (1 + bias + noise)`. This is the only
+                async boundary in the app; the key is never persisted.
 logger.js    ─ Append-only trace, snapshot, and event stores
   │
 replay.js     Build "view" objects from Market + Logger state, either live
               (buildLiveView) or at a historical tick (buildViewAt)
   │
 viz.js        HiDPI canvas drawing primitives
+mathml.js     Single source of truth for every math symbol in the UI.
+              Native browser MathML (no KaTeX / MathJax — preserves the
+              no-dependency promise). Dynamic renderers embed `Sym.<key>`
+              in template literals; static HTML uses
+              `<span data-sym="key">` placeholders that `hydrateSymbols()`
+              fills on `DOMContentLoaded`. New symbols go in the `Sym` map
+              here, never inline in ui.js.
 ui.js         DOM + canvas rendering; consumes views only, never touches
               Market/Engine/Agent directly — so live and replay rendering
               go through identical code paths
@@ -231,7 +248,9 @@ Fundamental value at the start of period *t* of any round is
 
 - No build, no tests, no package manager. Verify changes by opening
   `index.html` in a browser and exercising the sliders and Start/Pause/Reset.
-- Live site is served via GitHub Pages (`CNAME` in repo root).
+- Live site is served via GitHub Pages (`CNAME` in repo root). Pushes to
+  `master` auto-deploy to <https://stock.m0nius.com>, so keep commits
+  scoped tightly and do the browser check before pushing.
 - Prefer editing existing modules over adding new ones — the module boundaries
   above are load-bearing for the replay system.
 - Keep the code framework-free and dependency-free. No npm, no bundler, no
