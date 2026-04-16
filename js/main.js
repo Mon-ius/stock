@@ -347,14 +347,18 @@ const App = {
     // boolean enable flag and the threshold. Value 0 means disabled
     // (the canonical "off" state); values > 0 enable the regulator
     // with threshold = value / 100. Lives in the Plan II/III-only
-    // row, hidden under Plan I.
+    // row, hidden under Plan I. The enclosing tile gets the
+    // .regulator-active class whenever the threshold is non-zero so
+    // the border + readout pick up the red intervention accent.
     const regSlider = document.getElementById('p-regulator-threshold');
     if (regSlider) {
       const initPct = Math.round((this.tunables.regulatorThreshold || 0) * 100);
       regSlider.value = String(initPct);
-      const out = document.getElementById('v-regulator-threshold');
+      const out  = document.getElementById('v-regulator-threshold');
+      const tile = regSlider.closest('.regulator-tile');
       const paint = (pct) => {
         if (out) out.textContent = pct > 0 ? pct + '%' : 'off';
+        if (tile) tile.classList.toggle('regulator-active', pct > 0);
       };
       paint(initPct);
       regSlider.addEventListener('input', e => {

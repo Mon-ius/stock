@@ -1207,16 +1207,125 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .dlm-treatment-opt:has(#p-applyComplexDividends:checked) .slide-track {
   background: var(--purple);
 }
-/* Regulator slider — red accent to mark a market-wide intervention.
-   Visible only under Plan II / Plan III (LLM channels) since the
-   warning is delivered through the LLM prompt; .plan-llm-only is
-   hidden for Plan I via the body-class rule below. The red tint is
-   scoped to the regulator slider by overriding --accent and
-   --accent-light for that input only. */
+/* Regulator tile — same outer shape as the Complex Dividends and
+   Prior Bias / Prior Noise tiles (.dlm-treatment-opt) so the row
+   sits visually flush with its siblings, but laid out as a stack
+   (label + readout on top, slider below) so the threshold control
+   reads as one unit. Visible only under Plan II / Plan III (LLM
+   channels) since the warning is delivered through the LLM prompt;
+   .plan-llm-only is hidden for Plan I via the body-class rule. The
+   red accent is scoped here by overriding --accent / --accent-light
+   on the embedded slider, and the tile's border turns red whenever
+   the threshold is non-zero (driven by JS via .regulator-active). */
 body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
-.param-row input[type=range].regulator-slider {
+.dlm-treatment-opt.regulator-tile {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  cursor: default;
+}
+.dlm-treatment-opt.regulator-tile:hover {
+  border-color: var(--red);
+}
+.regulator-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.regulator-tile-head label {
+  flex: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.regulator-notation {
+  font-size: 10px;
+  color: var(--fg-3);
+  font-weight: normal;
+  white-space: nowrap;
+}
+.regulator-readout {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-3);
+  min-width: 32px;
+  text-align: right;
+}
+.dlm-treatment-opt.regulator-tile.regulator-active {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--bg-1));
+}
+.dlm-treatment-opt.regulator-tile.regulator-active .regulator-readout {
+  color: var(--red);
+  font-weight: 600;
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  --pct: 0%;
   --accent: var(--red);
   --accent-light: color-mix(in srgb, var(--red) 22%, transparent);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--pct),
+    var(--bg-3)   var(--pct),
+    var(--bg-3)   100%
+  );
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--bg-3);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--accent);
+  margin-top: -5.5px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:hover::-webkit-slider-thumb,
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:focus::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px var(--accent-light);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:hover::-moz-range-thumb,
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:focus::-moz-range-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px var(--accent-light);
 }
 /* Research-plan radio stack — same tile styling as the DLM treatment
    row, but vertical so each option can spell out the plan clearly. */
