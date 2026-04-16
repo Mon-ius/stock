@@ -100,8 +100,10 @@ const App = {
     // time it crosses `regulatorThreshold` within a round, injects a
     // one-shot REGULATOR WARNING into every Utility agent's LLM prompt
     // for the rest of that round. Plan I ignores the warning (no LLM
-    // channel), but the toggle and threshold are still captured in the
-    // snapshot so a replay shows when the regulator would have fired.
+    // channel), but the toggle is still captured in the snapshot so a
+    // replay shows when the regulator would have fired. The threshold
+    // is a fixed constant (50% bubble) rather than a slider so the
+    // intervention has a single canonical trigger point.
     applyRegulator:        false,
     regulatorThreshold:    0.50,
   },
@@ -336,19 +338,6 @@ const App = {
       cb.checked = !!this.tunables[key];
       cb.addEventListener('change', () => {
         this.tunables[key] = cb.checked;
-        this.rebuild();
-      });
-    }
-    // Regulator threshold — bubble ratio at which the warning fires.
-    // Live-edits propagate via rebuild() so the next period boundary
-    // already uses the new threshold without reseeding the engine.
-    const regThr = document.getElementById('p-regulatorThreshold');
-    if (regThr) {
-      regThr.value = String(this.tunables.regulatorThreshold);
-      regThr.addEventListener('change', () => {
-        const v = Number(regThr.value);
-        if (!Number.isFinite(v) || v <= 0) return;
-        this.tunables.regulatorThreshold = v;
         this.rebuild();
       });
     }

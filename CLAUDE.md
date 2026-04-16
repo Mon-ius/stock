@@ -142,8 +142,12 @@ tunables that aren't exposed as sliders still have a safe default.
 The Advanced settings panel exposes four boolean toggles — **Prior
 Bias**, **Prior Noise**, **Complex Dividends**, and **Regulator** —
 wired to `App.tunables.applyBias` / `App.tunables.applyNoise` /
-`App.tunables.applyComplexDividends` / `App.tunables.applyRegulator`,
-plus a `regulatorThreshold` number input. Prior Bias and Prior Noise act on
+`App.tunables.applyComplexDividends` / `App.tunables.applyRegulator`.
+The Regulator tile is gated by the `.plan-llm-only` CSS class so it
+only renders when the body carries `plan-ii` or `plan-iii`; the
+threshold (`regulatorThreshold = 0.50`, i.e. 50% bubble) is a fixed
+constant in `App.tunables`, not a slider, so the intervention has a
+single canonical trigger point. Prior Bias and Prior Noise act on
 the prior: it becomes `FV̂ × (1 + bias + noise)` where `bias` is the
 agent's persistent `biasMode × biasAmount` tilt and `noise` is an
 i.i.d. per-tick draw from `U[-valuationNoise, +valuationNoise]`.
