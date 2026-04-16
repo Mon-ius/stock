@@ -1183,6 +1183,30 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   background: color-mix(in srgb, var(--blue, #3b82f6) 10%, var(--bg-1));
   color: var(--fg-0);
 }
+/* Per-option accent overrides in the Advanced settings panel.
+   "N = 100 · scaled" gets teal to mark the scaled-up thick-book regime
+   that diverges from the paper's six-subject design; "Complex Dividends"
+   gets purple to mark the bounded-rationality dividend distribution. */
+.dlm-treatment-opt:has(input[name="adv-n-total"][value="100"]):hover {
+  border-color: var(--teal);
+}
+.dlm-treatment-opt:has(input[name="adv-n-total"][value="100"]) input[type="radio"] {
+  accent-color: var(--teal);
+}
+.dlm-treatment-opt:has(input[name="adv-n-total"][value="100"]:checked) {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 12%, var(--bg-1));
+}
+.dlm-treatment-opt:has(#p-applyComplexDividends):hover {
+  border-color: var(--purple);
+}
+.dlm-treatment-opt:has(#p-applyComplexDividends:checked) {
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 12%, var(--bg-1));
+}
+.dlm-treatment-opt:has(#p-applyComplexDividends:checked) .slide-track {
+  background: var(--purple);
+}
 /* Research-plan radio stack — same tile styling as the DLM treatment
    row, but vertical so each option can spell out the plan clearly. */
 .plan-row {
