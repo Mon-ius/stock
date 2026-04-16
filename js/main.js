@@ -95,6 +95,15 @@ const App = {
     // model where experienced agents compute FV more accurately than
     // novices. See Market.payDividend and UtilityAgent.updateBelief.
     applyComplexDividends: false,
+    // Plan II / Plan III — when true, the engine monitors the bubble
+    // ratio |P_t − FV_t| / FV_t at every period boundary and, the first
+    // time it crosses `regulatorThreshold` within a round, injects a
+    // one-shot REGULATOR WARNING into every Utility agent's LLM prompt
+    // for the rest of that round. Plan I ignores the warning (no LLM
+    // channel), but the toggle and threshold are still captured in the
+    // snapshot so a replay shows when the regulator would have fired.
+    applyRegulator:        false,
+    regulatorThreshold:    0.50,
   },
 
   // Research plan — 'I' | 'II' | 'III'. Plan I is the algorithm-only
@@ -320,13 +329,26 @@ const App = {
     this._constrainMix();
 
     // Boolean toggles in Advanced settings (bias / noise on the prior,
-    // complex-dividend regime).
-    for (const key of ['applyBias', 'applyNoise', 'applyComplexDividends']) {
+    // complex-dividend regime, Plan II/III regulator).
+    for (const key of ['applyBias', 'applyNoise', 'applyComplexDividends', 'applyRegulator']) {
       const cb = document.getElementById('p-' + key);
       if (!cb) continue;
       cb.checked = !!this.tunables[key];
       cb.addEventListener('change', () => {
         this.tunables[key] = cb.checked;
+        this.rebuild();
+      });
+    }
+    // Regulator threshold — bubble ratio at which the warning fires.
+    // Live-edits propagate via rebuild() so the next period boundary
+    // already uses the new threshold without reseeding the engine.
+    const regThr = document.getElementById('p-regulatorThreshold');
+    if (regThr) {
+      regThr.value = String(this.tunables.regulatorThreshold);
+      regThr.addEventListener('change', () => {
+        const v = Number(regThr.value);
+        if (!Number.isFinite(v) || v <= 0) return;
+        this.tunables.regulatorThreshold = v;
         this.rebuild();
       });
     }

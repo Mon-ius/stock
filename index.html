@@ -267,6 +267,20 @@
               </label>
             </label>
           </div>
+          <div class="param-row dlm-treatment-row">
+            <label class="dlm-treatment-opt regulator-opt" data-tip="Regulator (Plan II / III only). When ON the engine watches |P_t − FV_t| / FV_t at every period boundary; the first time it crosses the threshold within a round, a one-shot REGULATOR WARNING is injected into every Utility agent's LLM prompt for the remainder of that round, naming the bubble ratio and reminding the agent that prices have detached from the fundamental. The warning is cleared at the next round_start. Plan I has no LLM channel, so the toggle is recorded in the trace but does not alter Plan I behavior. Threshold is the bubble ratio at which the warning fires — default 50% (i.e. the market price is 1.5× the fundamental).">
+              <span>Regulator <span class="muted plan-only-hint">(Plan II/III)</span></span>
+              <label class="slide-toggle" for="p-applyRegulator">
+                <input type="checkbox" id="p-applyRegulator">
+                <span class="slide-track"><span class="slide-thumb"></span></span>
+              </label>
+            </label>
+            <label class="dlm-treatment-opt regulator-thresh" data-tip="Bubble-ratio threshold |P_t − FV_t| / FV_t at which the regulator fires its one-shot warning to all Utility agents. 0.50 means the warning fires the first period the price exceeds 1.5× FV (or drops below 0.5× FV) within a round.">
+              <span>Threshold</span>
+              <input type="number" id="p-regulatorThreshold" min="0.05" max="3" step="0.05" value="0.50" class="regulator-thresh-input">
+              <span class="regulator-thresh-suffix">× FV</span>
+            </label>
+          </div>
         </div>
       </details>
 

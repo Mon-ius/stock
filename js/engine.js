@@ -365,6 +365,10 @@ class Engine {
    * out transient per-round state (trend history, subjective prior).
    */
   _resetRound() {
+    // Regulator warnings are sticky for the rest of the round they
+    // fire in; the round boundary is where they expire so the next
+    // round starts with a clean slate.
+    if (this.ctx) this.ctx.regulatorWarning = null;
     const specs = this.ctx && this.ctx.agentSpecs;
     for (const id of Object.keys(this.agents)) {
       const a = this.agents[id];
@@ -416,6 +420,12 @@ class Engine {
       trust.snapshot(this.market.tick);
       this.logger.logTrust({ tick: this.market.tick, period, trust: trust.copy() });
     }
+    // Optional regulator pass — must run BEFORE _schedulePlanLLM so
+    // any warning that fires in this period is visible in the prompt
+    // built for the upcoming period. The detector itself does not
+    // care about plan; gating on Plan II/III happens in ai.js, where
+    // the warning is the only consumption channel.
+    this._checkRegulator();
     // Plan II / Plan III — period-boundary LLM action request. This
     // call is fire-and-forget: the tick loop continues immediately
     // while the network request runs in the background. When the
@@ -425,6 +435,56 @@ class Engine {
     // agents simply fall back to EU evaluation for that period.
     // Plan I ignores this block entirely.
     this._schedulePlanLLM();
+  }
+
+  /**
+   * Optional Plan II/III regulator. When ctx.tunables.applyRegulator
+   * is true, monitors the bubble ratio |P_t − FV_t| / FV_t at every
+   * period boundary. The first time the ratio crosses
+   * `regulatorThreshold` within a round, sets ctx.regulatorWarning to
+   * a sticky record { ratio, period, round, threshold, firedTick }
+   * that the next prompt build picks up — ai.js prepends a clearly
+   * marked REGULATOR WARNING block to every Utility agent's prompt
+   * for the rest of the round. _resetRound clears the warning so each
+   * round starts with a clean slate.
+   *
+   * No-op when the toggle is off, when there's no last price yet, or
+   * when the warning has already been issued for the current round.
+   */
+  _checkRegulator() {
+    const t = this.ctx && this.ctx.tunables;
+    if (!t || !t.applyRegulator) return;
+    const m = this.market;
+    if (m.lastPrice == null) return;
+    const fv = m.fundamentalValue();
+    if (!Number.isFinite(fv) || fv <= 0) return;
+    const ratio = Math.abs(m.lastPrice - fv) / fv;
+    const threshold = Number.isFinite(t.regulatorThreshold) && t.regulatorThreshold > 0
+      ? t.regulatorThreshold
+      : 0.5;
+    if (ratio < threshold) return;
+    const existing = this.ctx.regulatorWarning;
+    if (existing && existing.round === m.round) return;
+    const warning = {
+      ratio,
+      threshold,
+      period:    m.period,
+      round:     m.round,
+      firedTick: m.tick,
+      lastPrice: m.lastPrice,
+      fv,
+    };
+    this.ctx.regulatorWarning = warning;
+    this.logger.logEvent({
+      tick:      m.tick,
+      type:      'regulator_warning',
+      period:    m.period,
+      round:     m.round,
+      ratio,
+      threshold,
+      lastPrice: m.lastPrice,
+      fv,
+    });
   }
 
   /**
@@ -469,7 +529,7 @@ class Engine {
     const logger     = this.logger;
     Promise.resolve().then(async () => {
       try {
-        const results = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables, logger);
+        const results = await AI.getPlanBeliefs(agents, market, cfg, aiCfg, plan, ctx.tunables, logger, ctx.regulatorWarning);
         if (!results) return;
         for (const k of Object.keys(results)) {
           ctx.llmActions[k] = results[k];
@@ -563,7 +623,12 @@ class Engine {
         applyBias:              !!(this.ctx.tunables && this.ctx.tunables.applyBias),
         applyNoise:             !!(this.ctx.tunables && this.ctx.tunables.applyNoise),
         applyComplexDividends:  !!(this.ctx.tunables && this.ctx.tunables.applyComplexDividends),
+        applyRegulator:         !!(this.ctx.tunables && this.ctx.tunables.applyRegulator),
+        regulatorThreshold:     (this.ctx.tunables && this.ctx.tunables.regulatorThreshold) || 0.5,
       },
+      regulatorWarning:   this.ctx && this.ctx.regulatorWarning
+        ? Object.assign({}, this.ctx.regulatorWarning)
+        : null,
     };
   }
 }

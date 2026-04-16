@@ -265,9 +265,14 @@ const AI = {
    *   per-round P&L from `logger.roundFinalCash`, so the LLM can reason
    *   about its own past performance instead of a rule-based experience
    *   label.
+   * @param {?{ratio:number,threshold:number,period:number,round:number}} [regulator]
+   *   Optional one-shot regulator warning (Advanced → "Regulator"). When
+   *   provided AND ctx.tunables.applyRegulator is true, the prompt
+   *   gains a top-of-message REGULATOR WARNING block describing the
+   *   bubble ratio that tripped the regulator.
    * @returns {Promise<{[id:number]: number}>}
    */
-  async getPlanBeliefs(agents, market, config, aiCfg, plan, tunables, logger) {
+  async getPlanBeliefs(agents, market, config, aiCfg, plan, tunables, logger, regulator) {
     if (!aiCfg || !aiCfg.apiKey) return {};
     if (plan !== 'II' && plan !== 'III') return {};
     const utilityAgents = Object.values(agents).filter(
@@ -428,13 +433,38 @@ const AI = {
       actions.push(`7. HOLD: Do not trade.`);
 
       // ---- Compose prompt ----
-      const lines = [
+      const lines = [];
+
+      // Regulator warning — Plan II/III only, fired by the engine
+      // when the bubble ratio crosses the configured threshold. The
+      // block sits at the very top of the prompt so the LLM cannot
+      // miss it when ranking actions; it stays in the prompt for the
+      // remainder of the round in which it fired.
+      const regOn = !!(tunables && tunables.applyRegulator);
+      if (regOn && regulator && regulator.ratio != null) {
+        const pct = (regulator.ratio * 100).toFixed(0);
+        const thrPct = (regulator.threshold * 100).toFixed(0);
+        const above = (regulator.lastPrice != null && regulator.fv != null)
+          ? (regulator.lastPrice >= regulator.fv ? 'above' : 'below')
+          : 'detached from';
+        lines.push(
+          `⚠️ REGULATOR WARNING ⚠️`,
+          `The market regulator has issued a public alert this round:`,
+          `- The last traded price is ${pct}% ${above} the fundamental value (threshold = ${thrPct}%).`,
+          `- Last price ${regulator.lastPrice != null ? regulator.lastPrice.toFixed(0) : '—'} vs FV ${regulator.fv != null ? regulator.fv.toFixed(0) : '—'} at the moment of the warning (round ${regulator.round}, period ${regulator.period}).`,
+          `- The asset's intrinsic payoff has not changed; only the price has detached.`,
+          `- All traders have received this notice. Account for it when choosing your action.`,
+          ``,
+        );
+      }
+
+      lines.push(
         `You are a trader in the market, agent_${a.id}.`,
         ``,
         `【Your Type】`,
         `- Risk Preference Type: ${labelOf(a.riskPref)}`,
         `  ${riskDesc(a.riskPref)}`,
-      ];
+      );
 
       // Plan II — explicit utility formula.
       if (plan === 'II') {

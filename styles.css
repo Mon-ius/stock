@@ -1207,6 +1207,49 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .dlm-treatment-opt:has(#p-applyComplexDividends:checked) .slide-track {
   background: var(--purple);
 }
+/* Regulator tile (Plan II/III) — red accent to mark a market-wide
+   intervention. The companion threshold tile is tinted continuously
+   when the regulator is on so the two read as a single control. */
+.dlm-treatment-opt.regulator-opt:hover,
+.dlm-treatment-opt.regulator-thresh:hover {
+  border-color: var(--red);
+}
+.dlm-treatment-opt.regulator-opt:has(#p-applyRegulator:checked) {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, var(--bg-1));
+}
+.dlm-treatment-opt.regulator-opt:has(#p-applyRegulator:checked) .slide-track {
+  background: var(--red);
+}
+.dlm-treatment-row:has(#p-applyRegulator:checked) .regulator-thresh {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 8%, var(--bg-1));
+}
+.regulator-thresh-input {
+  width: 56px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-0);
+  color: var(--fg-0);
+  text-align: right;
+}
+.regulator-thresh-input:focus {
+  outline: none;
+  border-color: var(--red);
+}
+.regulator-thresh-suffix {
+  font-size: 11px;
+  color: var(--fg-3);
+  flex: 0 0 auto;
+}
+.plan-only-hint {
+  font-size: 10px;
+  font-weight: normal;
+  margin-left: 4px;
+  opacity: 0.7;
+}
 /* Research-plan radio stack — same tile styling as the DLM treatment
    row, but vertical so each option can spell out the plan clearly. */
 .plan-row {

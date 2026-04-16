@@ -139,10 +139,11 @@ The engine and agents read from `ctx.tunables` when present and fall back to
 `UTILITY_DEFAULTS` via the `tunable()` helper when a key is missing — so
 tunables that aren't exposed as sliders still have a safe default.
 
-The Advanced settings panel exposes three boolean toggles — **Prior
-Bias**, **Prior Noise**, and **Complex Dividends** — wired to
-`App.tunables.applyBias` / `App.tunables.applyNoise` /
-`App.tunables.applyComplexDividends`. Prior Bias and Prior Noise act on
+The Advanced settings panel exposes four boolean toggles — **Prior
+Bias**, **Prior Noise**, **Complex Dividends**, and **Regulator** —
+wired to `App.tunables.applyBias` / `App.tunables.applyNoise` /
+`App.tunables.applyComplexDividends` / `App.tunables.applyRegulator`,
+plus a `regulatorThreshold` number input. Prior Bias and Prior Noise act on
 the prior: it becomes `FV̂ × (1 + bias + noise)` where `bias` is the
 agent's persistent `biasMode × biasAmount` tilt and `noise` is an
 i.i.d. per-tick draw from `U[-valuationNoise, +valuationNoise]`.
@@ -151,6 +152,21 @@ Plan I baseline). Toggle state is captured in every engine snapshot
 and surfaces in the reasoning trace (`biasActive`, `noiseActive`,
 `complexActive`), the replay view (`v.tunables`), and the Plan II/III
 LLM prompt (under "YOUR PRIVATE STATE").
+
+**Regulator** is a Plan II/III feature: at every period boundary the
+engine computes the bubble ratio `|P_t − FV_t| / FV_t` and, the first
+time it crosses `regulatorThreshold` within a round, sets a sticky
+`ctx.regulatorWarning = { ratio, threshold, period, round, firedTick,
+lastPrice, fv }` and logs a `regulator_warning` event. `_resetRound()`
+clears the warning at the next round boundary so each round starts
+clean. `ai.js` reads the warning as the 8th argument to
+`getPlanBeliefs` and prepends a top-of-prompt `⚠️ REGULATOR WARNING ⚠️`
+block to every Utility agent's LLM prompt for the rest of that round,
+naming the bubble ratio and reminding the agent the asset's intrinsic
+payoff has not changed. Plan I has no LLM channel, so under Plan I the
+toggle is recorded in the snapshot but does not change agent behavior;
+the warning event still fires so a replay shows where the regulator
+*would* have intervened.
 
 **Complex Dividends** replaces the paper's `{0, 20}¢` coin flip with a
 5-point distribution `{0, 4, 10, 20, 40}¢` with probabilities
