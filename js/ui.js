@@ -1994,8 +1994,9 @@ const UI = {
 
       // Prior adjustment flags.
       const priorFlags = [];
-      if (r.biasActive)  priorFlags.push(`bias:${r.biasMode || '—'}(${r.biasAmount != null ? r.biasAmount.toFixed(2) : '—'})`);
-      if (r.noiseActive) priorFlags.push('noise');
+      if (r.biasActive)    priorFlags.push(`bias:${r.biasMode || '—'}(${r.biasAmount != null ? r.biasAmount.toFixed(2) : '—'})`);
+      if (r.noiseActive)   priorFlags.push('noise');
+      if (r.complexActive) priorFlags.push('complex-div');
       const priorBlock = priorFlags.length
         ? `<div class="trace-row muted">prior adj: ${priorFlags.join(' + ')}</div>`
         : '';

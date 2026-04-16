@@ -87,6 +87,21 @@ class OrderBook {
   clear() { this.bids = []; this.asks = []; }
 }
 
+/* Complex-dividend distribution used when the Advanced → "Complex
+ * Dividends" toggle is ON. Five outcomes with non-equal probabilities;
+ * the weighted mean is exactly 10¢ (= 0·0.30 + 4·0.25 + 10·0.20 + 20·0.15
+ * + 40·0.10), matching `dividendMean` so FV_t = 10·(T−t+1) is unchanged.
+ * The whole point is that the distribution's *shape* is non-trivial: a
+ * human subject cannot read that mean off the table at a glance, which
+ * motivates the matching bounded-rationality prior in UtilityAgent. */
+const COMPLEX_DIVIDEND_DISTRIBUTION = [
+  { value:  0, prob: 0.30 },
+  { value:  4, prob: 0.25 },
+  { value: 10, prob: 0.20 },
+  { value: 20, prob: 0.15 },
+  { value: 40, prob: 0.10 },
+];
+
 /**
  * Market — owns the book, the dividend process, and the append-only
  * time-series arrays used for charts and replay.
@@ -198,10 +213,30 @@ class Market {
     }
   }
 
-  /** Draw the common dividend and credit every holder. */
-  payDividend(agents, rng = Math.random) {
-    const hi = this.config.dividendMean * 2;
-    const d  = rng() < 0.5 ? 0 : hi;
+  /**
+   * Draw the common dividend and credit every holder.
+   *
+   * The baseline process is DLM 2005's {0, 2μ} coin flip. When the
+   * Advanced → "Complex Dividends" toggle is ON (read from ctx.tunables)
+   * the draw switches to the 5-point distribution in
+   * COMPLEX_DIVIDEND_DISTRIBUTION — same mean, harder-to-compute
+   * weighted sum.
+   */
+  payDividend(agents, rng = Math.random, ctx = null) {
+    const useComplex = !!(ctx && ctx.tunables && ctx.tunables.applyComplexDividends);
+    let d;
+    if (useComplex) {
+      const r = rng();
+      let acc = 0;
+      d = COMPLEX_DIVIDEND_DISTRIBUTION[COMPLEX_DIVIDEND_DISTRIBUTION.length - 1].value;
+      for (const bucket of COMPLEX_DIVIDEND_DISTRIBUTION) {
+        acc += bucket.prob;
+        if (r < acc) { d = bucket.value; break; }
+      }
+    } else {
+      const hi = this.config.dividendMean * 2;
+      d = rng() < 0.5 ? 0 : hi;
+    }
     for (const a of Object.values(agents)) a.cash += d * a.inventory;
     this.dividendHistory.push({ period: this.period, round: this.round, value: d });
     return d;

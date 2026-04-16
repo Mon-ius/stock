@@ -87,6 +87,14 @@ const App = {
     biasAmount:           0.15,
     applyBias:            true,
     applyNoise:           true,
+    // When true the per-period dividend is drawn from a non-trivial
+    // 5-point distribution with the same mean μ_d = 10¢ as the paper's
+    // {0, 20}¢ coin flip, and each UtilityAgent builds its prior from
+    // its own empirical dividend mean plus shrinking computational
+    // noise instead of from the exact FV — a bounded-rationality
+    // model where experienced agents compute FV more accurately than
+    // novices. See Market.payDividend and UtilityAgent.updateBelief.
+    applyComplexDividends: false,
   },
 
   // Research plan — 'I' | 'II' | 'III'. Plan I is the algorithm-only
@@ -311,8 +319,9 @@ const App = {
     this._updateCompBar();
     this._constrainMix();
 
-    // Boolean toggles in Trade Settings (bias / noise on the prior).
-    for (const key of ['applyBias', 'applyNoise']) {
+    // Boolean toggles in Advanced settings (bias / noise on the prior,
+    // complex-dividend regime).
+    for (const key of ['applyBias', 'applyNoise', 'applyComplexDividends']) {
       const cb = document.getElementById('p-' + key);
       if (!cb) continue;
       cb.checked = !!this.tunables[key];

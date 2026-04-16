@@ -642,10 +642,41 @@ class UtilityAgent extends Agent {
     const fv   = market.fundamentalValue();
     const plan = (ctx && ctx.plan) || 'I';
 
-    // Prior = FV × (1 + bias_i + ε). Each term is toggled independently
-    // via the applyBias / applyNoise tunables (checkboxes in Trade
-    // Settings). When both are off the prior collapses to FV exactly
-    // and the sole heterogeneity channel is the peer-message blend.
+    // Bounded-rationality FV estimate (Advanced → "Complex Dividends").
+    // When that toggle is ON the dividend draws come from a non-trivial
+    // 5-point distribution whose mean happens to still be μ_d — but the
+    // agent does *not* get to use the true mean. Instead it estimates
+    // μ̂_i from its own empirical dividend history (filtered to rounds
+    // it has actually observed, so a fresh round-4 replacement starts
+    // with an empty sample) plus a per-tick computational-noise term
+    // ξ ~ U[−σ_n, +σ_n] with σ_n = 0.35/√(n+1). A novice with zero
+    // draws is off by up to ±35%; a veteran with many draws converges
+    // on the true mean. The subjective FV used for the prior is then
+    // FV̂_t = μ̂_i · (T − t + 1), mirroring the paper's backward
+    // induction but anchored to the agent's finite-sample belief.
+    const useComplex = !!(ctx && ctx.tunables && ctx.tunables.applyComplexDividends);
+    let fvEffective = fv;
+    if (useComplex) {
+      const divHist   = market.dividendHistory || [];
+      const firstSeen = market.round - (this.roundsPlayed | 0);
+      let sum = 0, n = 0;
+      for (let i = 0; i < divHist.length; i++) {
+        if (divHist[i].round >= firstSeen) { sum += divHist[i].value; n++; }
+      }
+      const sampleMean = n > 0 ? sum / n : market.config.dividendMean;
+      const sigma      = 0.35 / Math.sqrt(n + 1);
+      const compNoise  = sigma * (2 * rng() - 1);
+      const muHat      = Math.max(0, sampleMean * (1 + compNoise));
+      const remaining  = Math.max(0, market.config.periods - market.period + 1);
+      fvEffective      = muHat * remaining;
+    }
+
+    // Prior = FV̂ × (1 + bias_i + ε). FV̂ is the true FV by default and
+    // the bounded-rationality estimate above when Complex Dividends is
+    // on. Bias and noise are toggled independently via applyBias /
+    // applyNoise (checkboxes in Advanced settings). With all three off
+    // the prior collapses to the true FV exactly and the sole
+    // heterogeneity channel is the peer-message blend.
     const useBias  = ctx && ctx.tunables && ctx.tunables.applyBias;
     const useNoise = ctx && ctx.tunables && ctx.tunables.applyNoise;
     const bias  = useBias
@@ -656,7 +687,7 @@ class UtilityAgent extends Agent {
     const noise = useNoise
       ? this.valuationNoise * (2 * rng() - 1)
       : 0;
-    const prior = Math.max(0, fv * (1 + bias + noise));
+    const prior = Math.max(0, fvEffective * (1 + bias + noise));
     this.trueValuation = prior;
 
     // Gather last period's messages from the bus (peer channel). These
@@ -809,7 +840,7 @@ class UtilityAgent extends Agent {
     const plan = ctx && ctx.plan;
     const llmEntry = ctx && ctx.llmActions && ctx.llmActions[this.id];
     if ((plan === 'II' || plan === 'III') && llmEntry) {
-      const result = this._translateLLMAction(llmEntry, market);
+      const result = this._translateLLMAction(llmEntry, market, ctx);
       delete ctx.llmActions[this.id];
       if (result) return result;
       // Falls through to EU evaluation if action is invalid.
@@ -842,11 +873,12 @@ class UtilityAgent extends Agent {
         })),
         chosen: chosen.label,
       },
-      biasActive:   !!(ctx && ctx.tunables && ctx.tunables.applyBias),
-      noiseActive:  !!(ctx && ctx.tunables && ctx.tunables.applyNoise),
-      biasMode:     this.biasMode,
-      biasAmount:   this.biasAmount,
-      beliefMode:   this.beliefMode,
+      biasActive:    !!(ctx && ctx.tunables && ctx.tunables.applyBias),
+      noiseActive:   !!(ctx && ctx.tunables && ctx.tunables.applyNoise),
+      complexActive: !!(ctx && ctx.tunables && ctx.tunables.applyComplexDividends),
+      biasMode:      this.biasMode,
+      biasAmount:    this.biasAmount,
+      beliefMode:    this.beliefMode,
       receivedMsgs: this.receivedMsgs.map(m => ({
         from:  m.senderName,
         claim: m.claimedValuation,
@@ -869,7 +901,7 @@ class UtilityAgent extends Agent {
    * book state. Returns null if the action is invalid (constraint
    * violation), in which case decide() falls back to EU evaluation.
    */
-  _translateLLMAction(llmEntry, market) {
+  _translateLLMAction(llmEntry, market, ctx = null) {
     const { action, reason } = llmEntry;
     const bid  = market.book.bestBid();
     const ask  = market.book.bestAsk();
@@ -883,6 +915,7 @@ class UtilityAgent extends Agent {
       llmReason:        reason,
       biasActive:       false,
       noiseActive:      false,
+      complexActive:    !!(ctx && ctx.tunables && ctx.tunables.applyComplexDividends),
       biasMode:         this.biasMode,
       biasAmount:       this.biasAmount,
       beliefMode:       this.beliefMode,

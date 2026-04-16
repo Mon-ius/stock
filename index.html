@@ -258,6 +258,15 @@
               </label>
             </label>
           </div>
+          <div class="param-row dlm-treatment-row">
+            <label class="dlm-treatment-opt" data-tip="When ON the per-period dividend is drawn from a non-trivial 5-point distribution {0, 4, 10, 20, 40}¢ with probabilities {0.30, 0.25, 0.20, 0.15, 0.10}. The expected dividend is still μ_d = 10¢ (so the true FV_t = 10·(T−t+1) is unchanged) — but a real person cannot read that mean off the distribution at a glance. Each UtilityAgent therefore computes its prior from its own empirical mean of observed dividends plus a computational-noise term ξ ~ U[−σ_n, +σ_n] with σ_n = 0.35/√(n+1), so a novice with zero draws is off by up to ±35% and a veteran with many draws converges to the truth. Replaced agents in round 4 start with an empty history (roundsPlayed=0) and therefore enter the market with the naive prior. When OFF the dividend is the paper's {0, 20}¢ coin flip and every agent's prior uses the exact FV.">
+              <span>Complex Dividends</span>
+              <label class="slide-toggle" for="p-applyComplexDividends">
+                <input type="checkbox" id="p-applyComplexDividends">
+                <span class="slide-track"><span class="slide-thumb"></span></span>
+              </label>
+            </label>
+          </div>
         </div>
       </details>
 

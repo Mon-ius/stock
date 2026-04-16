@@ -200,7 +200,7 @@ class Engine {
     // trust matrix) across rounds so the cross-round learning channel
     // the paper hinges on is the only source of persistent state.
     if (m.tick % this.config.ticksPerPeriod === 0) {
-      const d = m.payDividend(this.agents, this._rng);
+      const d = m.payDividend(this.agents, this._rng, this.ctx);
       this.logger.logEvent({ tick: m.tick, type: 'dividend', period: m.period, round: m.round, value: d });
       // Communication + trust update (no-op unless extended mode + comms on).
       this._communicationRound();
@@ -560,8 +560,9 @@ class Engine {
       trustLength:        this.logger.trustHistory.length,
       trust:              this.ctx.trustTracker ? this.ctx.trustTracker.copy() : null,
       tunables: {
-        applyBias:  !!(this.ctx.tunables && this.ctx.tunables.applyBias),
-        applyNoise: !!(this.ctx.tunables && this.ctx.tunables.applyNoise),
+        applyBias:              !!(this.ctx.tunables && this.ctx.tunables.applyBias),
+        applyNoise:             !!(this.ctx.tunables && this.ctx.tunables.applyNoise),
+        applyComplexDividends:  !!(this.ctx.tunables && this.ctx.tunables.applyComplexDividends),
       },
     };
   }
