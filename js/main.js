@@ -95,17 +95,18 @@ const App = {
     // model where experienced agents compute FV more accurately than
     // novices. See Market.payDividend and UtilityAgent.updateBelief.
     applyComplexDividends: false,
-    // Plan II / Plan III — when true, the engine monitors the bubble
-    // ratio |P_t − FV_t| / FV_t at every period boundary and, the first
-    // time it crosses `regulatorThreshold` within a round, injects a
-    // one-shot REGULATOR WARNING into every Utility agent's LLM prompt
-    // for the rest of that round. Plan I ignores the warning (no LLM
-    // channel), but the toggle is still captured in the snapshot so a
-    // replay shows when the regulator would have fired. The threshold
-    // is a fixed constant (50% bubble) rather than a slider so the
-    // intervention has a single canonical trigger point.
+    // Plan II / Plan III — Regulator. A single slider in Advanced
+    // settings drives both `applyRegulator` and `regulatorThreshold`:
+    // value = 0 → disabled; value ∈ (0, 100] → enabled with threshold
+    // value/100 (so 50 = 0.50 = warn when |P − FV|/FV ≥ 50%). When
+    // enabled the engine monitors the bubble ratio at every period
+    // boundary and the first time it crosses the threshold within a
+    // round it injects a one-shot REGULATOR WARNING into every Utility
+    // agent's LLM prompt for the rest of that round. Plan I has no LLM
+    // channel and ignores the warning; the snapshot still captures the
+    // toggle so a replay shows where the regulator would have fired.
     applyRegulator:        false,
-    regulatorThreshold:    0.50,
+    regulatorThreshold:    0,
   },
 
   // Research plan — 'I' | 'II' | 'III'. Plan I is the algorithm-only
@@ -331,8 +332,8 @@ const App = {
     this._constrainMix();
 
     // Boolean toggles in Advanced settings (bias / noise on the prior,
-    // complex-dividend regime, Plan II/III regulator).
-    for (const key of ['applyBias', 'applyNoise', 'applyComplexDividends', 'applyRegulator']) {
+    // complex-dividend regime).
+    for (const key of ['applyBias', 'applyNoise', 'applyComplexDividends']) {
       const cb = document.getElementById('p-' + key);
       if (!cb) continue;
       cb.checked = !!this.tunables[key];
@@ -340,6 +341,30 @@ const App = {
         this.tunables[key] = cb.checked;
         this.rebuild();
       });
+    }
+
+    // Regulator slider — single 0–100 control that drives both the
+    // boolean enable flag and the threshold. Value 0 means disabled
+    // (the canonical "off" state); values > 0 enable the regulator
+    // with threshold = value / 100. Lives in the Plan II/III-only
+    // row, hidden under Plan I.
+    const regSlider = document.getElementById('p-regulator-threshold');
+    if (regSlider) {
+      const initPct = Math.round((this.tunables.regulatorThreshold || 0) * 100);
+      regSlider.value = String(initPct);
+      const out = document.getElementById('v-regulator-threshold');
+      const paint = (pct) => {
+        if (out) out.textContent = pct > 0 ? pct + '%' : 'off';
+      };
+      paint(initPct);
+      regSlider.addEventListener('input', e => {
+        const pct = (Number(e.target.value) | 0);
+        this.tunables.regulatorThreshold = pct / 100;
+        this.tunables.applyRegulator     = pct > 0;
+        paint(pct);
+        this._updateSliderPct(e.target);
+      });
+      regSlider.addEventListener('change', () => this.rebuild());
     }
 
     // Plan switch — the three segmented buttons Plan I / Plan II /

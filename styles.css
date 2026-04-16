@@ -1207,20 +1207,16 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .dlm-treatment-opt:has(#p-applyComplexDividends:checked) .slide-track {
   background: var(--purple);
 }
-/* Regulator tile — red accent to mark a market-wide intervention.
+/* Regulator slider — red accent to mark a market-wide intervention.
    Visible only under Plan II / Plan III (LLM channels) since the
    warning is delivered through the LLM prompt; .plan-llm-only is
-   hidden for Plan I via the body-class rule below. */
+   hidden for Plan I via the body-class rule below. The red tint is
+   scoped to the regulator slider by overriding --accent and
+   --accent-light for that input only. */
 body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
-.dlm-treatment-opt.regulator-opt:hover {
-  border-color: var(--red);
-}
-.dlm-treatment-opt.regulator-opt:has(#p-applyRegulator:checked) {
-  border-color: var(--red);
-  background: color-mix(in srgb, var(--red) 12%, var(--bg-1));
-}
-.dlm-treatment-opt.regulator-opt:has(#p-applyRegulator:checked) .slide-track {
-  background: var(--red);
+.param-row input[type=range].regulator-slider {
+  --accent: var(--red);
+  --accent-light: color-mix(in srgb, var(--red) 22%, transparent);
 }
 /* Research-plan radio stack — same tile styling as the DLM treatment
    row, but vertical so each option can spell out the plan clearly. */

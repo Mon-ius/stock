@@ -139,15 +139,16 @@ The engine and agents read from `ctx.tunables` when present and fall back to
 `UTILITY_DEFAULTS` via the `tunable()` helper when a key is missing — so
 tunables that aren't exposed as sliders still have a safe default.
 
-The Advanced settings panel exposes four boolean toggles — **Prior
-Bias**, **Prior Noise**, **Complex Dividends**, and **Regulator** —
-wired to `App.tunables.applyBias` / `App.tunables.applyNoise` /
-`App.tunables.applyComplexDividends` / `App.tunables.applyRegulator`.
-The Regulator tile is gated by the `.plan-llm-only` CSS class so it
-only renders when the body carries `plan-ii` or `plan-iii`; the
-threshold (`regulatorThreshold = 0.50`, i.e. 50% bubble) is a fixed
-constant in `App.tunables`, not a slider, so the intervention has a
-single canonical trigger point. Prior Bias and Prior Noise act on
+The Advanced settings panel exposes three boolean toggles — **Prior
+Bias**, **Prior Noise**, and **Complex Dividends** — wired to
+`App.tunables.applyBias` / `App.tunables.applyNoise` /
+`App.tunables.applyComplexDividends`, plus a single **Regulator**
+slider (0–100%) gated by the `.plan-llm-only` CSS class so it only
+renders when the body carries `plan-ii` or `plan-iii`. The slider
+value drives both `App.tunables.regulatorThreshold` (= value/100) and
+`App.tunables.applyRegulator` (= value > 0); zero is the canonical
+disabled state and is also the default, so a fresh load posts no
+regulator interventions until the user moves the slider. Prior Bias and Prior Noise act on
 the prior: it becomes `FV̂ × (1 + bias + noise)` where `bias` is the
 agent's persistent `biasMode × biasAmount` tilt and `noise` is an
 i.i.d. per-tick draw from `U[-valuationNoise, +valuationNoise]`.
@@ -157,9 +158,10 @@ and surfaces in the reasoning trace (`biasActive`, `noiseActive`,
 `complexActive`), the replay view (`v.tunables`), and the Plan II/III
 LLM prompt (under "YOUR PRIVATE STATE").
 
-**Regulator** is a Plan II/III feature: at every period boundary the
-engine computes the bubble ratio `|P_t − FV_t| / FV_t` and, the first
-time it crosses `regulatorThreshold` within a round, sets a sticky
+**Regulator** is a Plan II/III feature: when the slider value > 0 the
+engine computes the bubble ratio `|P_t − FV_t| / FV_t` at every period
+boundary and, the first time it crosses `regulatorThreshold` within a
+round, sets a sticky
 `ctx.regulatorWarning = { ratio, threshold, period, round, firedTick,
 lastPrice, fv }` and logs a `regulator_warning` event. `_resetRound()`
 clears the warning at the next round boundary so each round starts
