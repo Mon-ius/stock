@@ -230,17 +230,22 @@ const App = {
     const hydrate = (typeof window !== 'undefined' && window.hydrateSymbols) || null;
 
     const position = (target) => {
+      // .rich-tip uses `position: fixed`, so coordinates are viewport-
+      // relative and must NOT include window.scrollX/Y. getBoundingClientRect
+      // already returns viewport-relative values; clamp against innerWidth
+      // / innerHeight directly. Adding scroll offsets here (the previous
+      // behaviour) was the reason the Prior Bias tooltip drifted off-
+      // screen once the Advanced Settings section was scrolled into view.
       const rect = target.getBoundingClientRect();
       const tipRect = tip.getBoundingClientRect();
       const margin  = 10;
-      let left = rect.left + window.scrollX;
-      // Clamp horizontally so the tooltip stays fully on-screen.
-      const maxLeft = window.scrollX + window.innerWidth - tipRect.width - 4;
+      let left = rect.left;
+      const maxLeft = window.innerWidth - tipRect.width - 4;
       if (left > maxLeft) left = maxLeft;
-      if (left < window.scrollX + 4) left = window.scrollX + 4;
+      if (left < 4) left = 4;
       // Prefer above; flip below if there isn't room.
-      let top = rect.top + window.scrollY - tipRect.height - margin;
-      if (top < window.scrollY + 4) top = rect.bottom + window.scrollY + margin;
+      let top = rect.top - tipRect.height - margin;
+      if (top < 4) top = rect.bottom + margin;
       tip.style.left = left + 'px';
       tip.style.top  = top + 'px';
     };
