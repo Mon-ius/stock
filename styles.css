@@ -1420,6 +1420,40 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .dlm-treatment-opt.scale-tile.scale-tile-amber input[type=range].scale-slider {
   --accent: var(--amber);
   --accent-light: color-mix(in srgb, var(--amber) 22%, transparent);
+  /* Three-zone gradient custom properties, written by App._syncRrTracks:
+     --r-pct is where the replacement-round r sits on the shared [2, 10]
+     scale, --R-pct is where rounds-per-session R sits. The track paints
+     0 → r solid amber, r → R medium amber (post-replacement rounds
+     within the session), R → 10 neutral (beyond the session). Because
+     both sliders share the same scale, their gradient stops line up
+     pixel-for-pixel so the r ≤ R invariant is visible at a glance. */
+  --r-pct: 25%;
+  --R-pct: 25%;
+}
+.dlm-treatment-opt.scale-tile.scale-tile-amber input[type=range].scale-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--r-pct),
+    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--r-pct),
+    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--R-pct),
+    var(--bg-3) var(--R-pct),
+    var(--bg-3) 100%
+  );
+}
+.dlm-treatment-opt.scale-tile.scale-tile-amber input[type=range].scale-slider::-moz-range-track {
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--r-pct),
+    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--r-pct),
+    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--R-pct),
+    var(--bg-3) var(--R-pct),
+    var(--bg-3) 100%
+  );
+}
+.dlm-treatment-opt.scale-tile.scale-tile-amber input[type=range].scale-slider::-moz-range-progress {
+  background: transparent;
 }
 /* Per-session rate grid — 10 compact slider rows nested inside the
    scale-tile-amber host. Layout is a 2-column grid so the vertical

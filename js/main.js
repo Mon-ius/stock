@@ -518,27 +518,30 @@ const App = {
       });
     }
 
-    // Advanced settings — rounds per session (R) slider (2 … 10). Drives
-    // config.roundsPerSession and clamps the replacement-round slider's
-    // upper bound + value so r ≤ R always holds.
-    const advR   = document.getElementById('p-adv-rounds');
-    const advRout = document.getElementById('v-adv-rounds');
-    const advRep = document.getElementById('p-adv-replace-round');
+    // Advanced settings — rounds-per-session (R) and replacement-round
+    // (r) sliders. Both share the same [2, 10] scale so their tracks
+    // line up visually; every change to either slider repaints the
+    // three-zone amber gradient on BOTH tracks (0 → r dark, r → R
+    // medium, R → 10 neutral) so the r-must-lie-within-R invariant is
+    // visible at a glance. Dragging R down past r drags r with it;
+    // dragging r up past R is impossible — r gets clamped.
+    const advR     = document.getElementById('p-adv-rounds');
+    const advRout  = document.getElementById('v-adv-rounds');
+    const advRep   = document.getElementById('p-adv-replace-round');
     const advRepOut = document.getElementById('v-adv-replace-round');
+    const _clampR = v => Math.max(2, Math.min(10, Number(v) | 0 || 4));
     if (advR) {
-      const _clampR = v => Math.max(2, Math.min(10, Number(v) | 0 || 4));
       advR.addEventListener('input', () => {
         const R = _clampR(advR.value);
         if (advRout) advRout.textContent = `${R} rounds`;
-        this._updateSliderPct(advR);
-        if (advRep) {
-          advRep.max = String(R);
-          if ((Number(advRep.value) | 0) > R) {
-            advRep.value = String(R);
-            if (advRepOut) advRepOut.textContent = `r = ${R}`;
-            this._updateSliderPct(advRep);
-          }
+        // Drag r down in lockstep when R drops below the current r —
+        // the invariant r ≤ R must hold every animation frame, not
+        // just on commit. The readout + slider handle update together.
+        if (advRep && (Number(advRep.value) | 0) > R) {
+          advRep.value = String(R);
+          if (advRepOut) advRepOut.textContent = `r = ${R}`;
         }
+        this._syncRrTracks();
       });
       advR.addEventListener('change', () => {
         const R = _clampR(advR.value);
@@ -556,9 +559,14 @@ const App = {
         return Math.max(2, Math.min(R, Number(v) | 0 || R));
       };
       advRep.addEventListener('input', () => {
+        // Clamp visually too — if the user tries to drag beyond R,
+        // snap the slider handle back to R so the handle stays
+        // inside the amber medium band.
+        const R = (this.config && this.config.roundsPerSession) || 4;
+        if ((Number(advRep.value) | 0) > R) advRep.value = String(R);
         const r = _clampRep(advRep.value);
         if (advRepOut) advRepOut.textContent = `r = ${r}`;
-        this._updateSliderPct(advRep);
+        this._syncRrTracks();
       });
       advRep.addEventListener('change', () => {
         const r = _clampRep(advRep.value);
@@ -924,14 +932,46 @@ const App = {
     }
     const advRep = document.getElementById('p-adv-replace-round');
     if (advRep) {
-      advRep.max = String(R);
       if (Number(advRep.value) !== r) {
         advRep.value = String(r);
-        this._updateSliderPct(advRep);
         const advRepOut = document.getElementById('v-adv-replace-round');
         if (advRepOut) advRepOut.textContent = `r = ${r}`;
       }
     }
+    this._syncRrTracks();
+  },
+
+  /**
+   * Paint the three-zone amber gradient on the R and r slider tracks
+   * from the current (R, r) pair. Both sliders use a shared [2, 10]
+   * scale so the gradient stops project onto identical pixel positions
+   * on both tracks — the user sees the invariant r ≤ R as a literal
+   * stacking of colored bands that line up across rows.
+   *
+   *   0 → r : solid amber (rounds up to and including the replacement
+   *           boundary — this is where the treatment fires).
+   *   r → R : medium amber (rounds in session but after replacement).
+   *   R → 10: neutral (rounds beyond the session horizon — greyed out).
+   *
+   * Each slider carries --r-pct / --R-pct custom properties consumed
+   * by the track-gradient rule in styles.css. Reads the live DOM
+   * values (not this.* state) so the tracks update mid-drag before
+   * the `change` event commits.
+   */
+  _syncRrTracks() {
+    const advR   = document.getElementById('p-adv-rounds');
+    const advRep = document.getElementById('p-adv-replace-round');
+    if (!advR && !advRep) return;
+    const MIN = 2, MAX = 10, span = MAX - MIN;
+    const Rv = Math.max(MIN, Math.min(MAX, Number(advR   && advR.value)   | 0 || 4));
+    const rv = Math.max(MIN, Math.min(Rv,  Number(advRep && advRep.value) | 0 || 4));
+    const rPct = ((rv - MIN) / span) * 100;
+    const RPct = ((Rv - MIN) / span) * 100;
+    [advR, advRep].forEach(el => {
+      if (!el) return;
+      el.style.setProperty('--r-pct', rPct + '%');
+      el.style.setProperty('--R-pct', RPct + '%');
+    });
   },
 
   /**
