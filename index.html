@@ -94,7 +94,7 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="99" step="1" value="0">
           </div>
-          <div class="param-row dlm-treatment-row" id="dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. R4-⅔ replaces ⅓ of the population in round 4; R4-⅓ replaces ⅔. One click of Start runs all 10 sessions. The two sizes scale with the N setting in Advanced settings (N = 100 ⇒ T20/T40, N = 6 ⇒ T2/T4).">
+          <div class="param-row dlm-treatment-row" id="dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. R4-⅔ replaces ⅓ of the population in round 4; R4-⅓ replaces ⅔. One click of Start runs all 10 sessions. The two sizes scale linearly with the N slider in Advanced settings (N = 6 ⇒ T2/T4, N = 100 ⇒ T20/T40).">
             <label class="dlm-treatment-opt">
               <input type="radio" name="dlm-treatment" value="20" checked>
               <span><strong>First <span class="tx-small-label">T20</span></strong> · R4-&#8532;</span>
@@ -233,14 +233,13 @@
         <summary>Advanced settings <span class="const-cite">population scale · treatment labels</span></summary>
         <div class="psec-body">
           <div class="param-row dlm-treatment-row" id="adv-n-total-row">
-            <label class="dlm-treatment-opt" data-tip="Scaled regime (N = 100). 100 UtilityAgent slots split evenly across the two DLM endowment types, with round-4 treatments labelled T20 (20 fresh replacements, 80 veterans) and T40 (40 fresh, 60 veterans). The thicker order book smooths price discovery and gives the LLM channel in Plan II/III enough counterparties to trade against every period. Default for this simulator; selecting redraws every agent and resets the seed.">
-              <input type="radio" name="adv-n-total" value="100" checked>
-              <span><strong>100 Agents (N = 100)</strong> · scaled</span>
-            </label>
-            <label class="dlm-treatment-opt" data-tip="Original Dufwenberg–Lindqvist–Moore (2005) six-subject design. 3 type-A + 3 type-B UtilityAgents with the paper-faithful round-4 treatments T2 (2 fresh replacements, 4 veterans) and T4 (4 fresh, 2 veterans) — the R4-⅔ / R4-⅓ labels from DLM §I. Thin order book reproduces the published bubble dynamics exactly; the LLM channel can starve of counterparties. Selecting redraws every agent and resets the seed.">
-              <input type="radio" name="adv-n-total" value="6">
-              <span><strong>6 Agents (N = 6)</strong> · DLM 2005</span>
-            </label>
+            <div class="dlm-treatment-opt scale-tile" data-tip-id="advN">
+              <div class="param-head">
+                <label for="p-adv-n-total">Population <span data-sym="nAgents"></span></label>
+                <span class="pval" id="v-adv-n-total">100</span>
+              </div>
+              <input type="range" id="p-adv-n-total" class="scale-slider" min="6" max="100" step="1" value="100">
+            </div>
           </div>
           <div class="param-row dlm-treatment-row">
             <label class="dlm-treatment-opt" data-tip-id="advBias">
@@ -1909,6 +1908,11 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
   hydrated by mathml.js's hydrateSymbols so every math expression
   renders through the same Sym registry as the Architecture tab.
 -->
+<template id="tpl-advN">
+  <p>Population size <span data-sym="nAgents"></span> — the number of UtilityAgents in each session. Drag between <strong>6</strong> (paper-faithful DLM 2005 thin-book regime) and <strong>100</strong> (simulator-scaled thick-book regime).</p>
+  <p>Round-4 treatment sizes scale with <span data-sym="nAgents"></span>: at <span data-sym="nAgents"></span> = 6 the paper's T2 / T4 (replace 2 or 4 of 6), at <span data-sym="nAgents"></span> = 100 the simulator's T20 / T40, linearly interpolated in between. The treatment labels update as you slide.</p>
+  <p>Changing <span data-sym="nAgents"></span> redraws every agent and resets the engine seed. Mix sliders rescale to keep <code>U = N − F − T</code>.</p>
+</template>
 <template id="tpl-advBias">
   <p>When ON each UtilityAgent's prior becomes <span data-sym="priorBias"></span>.</p>
   <p><span data-sym="deltaI"></span> ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic); <span data-sym="beta"></span> = 0.15. The tilt <span data-sym="biasI"></span> = <span data-sym="deltaI"></span>·<span data-sym="beta"></span> is persistent — optimistic agents systematically overpay, pessimistic agents under-bid, creating directional mispricing that survives across rounds.</p>

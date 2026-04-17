@@ -481,15 +481,25 @@ const App = {
       });
     });
 
-    // Advanced settings — population-scale switch (N = 100 scaled vs
-    // N = 6 DLM 2005 faithful). Rewrites mix, treatmentSize, treatment
-    // radio labels, and the paper-constants N display in one shot.
-    document.querySelectorAll('input[name="adv-n-total"]').forEach(radio => {
-      radio.addEventListener('change', e => {
-        const n = Number(e.target.value) || 100;
+    // Advanced settings — continuous population-scale slider (6 … 100).
+    // The slider rewrites mix, treatmentSize, treatment radio labels,
+    // the paper-constants N display, and reseeds the engine in one shot.
+    // Live-update the readout while dragging; commit (rebuild) on release
+    // so the user can scrub without triggering a full reset every pixel.
+    const advN = document.getElementById('p-adv-n-total');
+    const advNout = document.getElementById('v-adv-n-total');
+    if (advN) {
+      const _clampN = v => Math.max(6, Math.min(100, Number(v) | 0 || 100));
+      advN.addEventListener('input', () => {
+        const n = _clampN(advN.value);
+        if (advNout) advNout.textContent = String(n);
+        this._updateSliderPct(advN);
+      });
+      advN.addEventListener('change', () => {
+        const n = _clampN(advN.value);
         this.setTotalN(n);
       });
-    });
+    }
 
     // Prime the custom --pct on every slider so the filled portion of
     // the track matches the initial value before any interaction.
@@ -803,13 +813,17 @@ const App = {
    */
   /**
    * Round-4 replacement sizes for the selected population scale.
-   * N = 100 uses the simulator-scaled T20/T40 pair; N = 6 reverts to
-   * the DLM 2005 original T2/T4 pair. Both map onto the same
-   * R4-⅔ / R4-⅓ semantic labels.
+   * Linearly interpolates between the two anchor points so the slider
+   * returns the paper-faithful T2/T4 pair at N = 6 and the scaled
+   * T20/T40 pair at N = 100, with integer sizes in between. Both map
+   * onto the same R4-⅔ / R4-⅓ semantic labels.
    */
   _treatmentsFor(n) {
-    if (n === 6) return { small: 2,  big: 4,  smallLabel: 'T2',  bigLabel: 'T4'  };
-    return       { small: 20, big: 40, smallLabel: 'T20', bigLabel: 'T40' };
+    n = Math.max(6, Math.min(100, Number(n) | 0 || 100));
+    const t = (n - 6) / (100 - 6);
+    const small = Math.max(1, Math.round(2 + t * (20 - 2)));
+    const big   = Math.max(small + 1, Math.round(4 + t * (40 - 4)));
+    return { small, big, smallLabel: `T${small}`, bigLabel: `T${big}` };
   },
 
   /**
@@ -821,17 +835,28 @@ const App = {
    * engine rebuilds its agent roster at the new scale.
    */
   setTotalN(n) {
-    n = Number(n) || 100;
-    if (n !== 6 && n !== 100) n = 100;
+    n = Math.max(6, Math.min(100, Number(n) | 0 || 100));
     this.TOTAL_N = n;
     this.mix = { F: 0, T: 0, R: 0, U: n };
 
-    // Body class drives CSS overrides that rescale the canvases
-    // whose default heights were tuned for the 100×100 regime
-    // (chart-trust in particular). Every other chart branches on
-    // nAgents > UI.FAN_THRESHOLD in its own renderer and so adapts
-    // automatically on the next requestRender().
-    document.body.classList.toggle('n-small', n === 6);
+    // Body class drives CSS overrides that rescale the canvases whose
+    // default heights were tuned for the 100-agent regime (chart-trust
+    // in particular). The cutover at N ≤ 12 keeps the thin-book layout
+    // active for the paper-faithful six-subject scale and any nearby
+    // values; above that the fan-out renderers take over automatically
+    // via the UI.FAN_THRESHOLD branch in their own code paths.
+    document.body.classList.toggle('n-small', n <= 12);
+
+    // Keep the slider knob and readout in sync when setTotalN is called
+    // programmatically (e.g. from the Reset button) rather than by user
+    // drag — the `input` event path already covers drag updates.
+    const advN = document.getElementById('p-adv-n-total');
+    if (advN && Number(advN.value) !== n) {
+      advN.value = String(n);
+      this._updateSliderPct(advN);
+    }
+    const advNout = document.getElementById('v-adv-n-total');
+    if (advNout) advNout.textContent = String(n);
 
     const tx = this._treatmentsFor(n);
     this.treatmentSize = tx.small;
@@ -851,9 +876,13 @@ const App = {
     if (constN) constN.textContent = `= ${n}`;
     const constNote = document.getElementById('const-n-note');
     if (constNote) {
+      const paperQuote = '&ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo;';
+      const src = '<span class="const-src">§I, p. 1733 &middot; slider in Advanced settings</span>';
       constNote.innerHTML = n === 6
-        ? 'DLM 2005 &sect;I: &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; The simulator is currently running the paper-faithful six-subject population with T2/T4 round-4 treatments.<span class="const-src">§I, p. 1733 &middot; switch in Advanced settings</span>'
-        : 'DLM 2005 &sect;I pins the original design at six subjects &mdash; &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; This simulator scales the population to N = 100 for a thicker order book while preserving the four-round session structure.<span class="const-src">§I, p. 1733 &middot; scaled in main.js · switch in Advanced settings</span>';
+        ? `DLM 2005 &sect;I: ${paperQuote} The simulator is currently running the paper-faithful six-subject population with ${tx.smallLabel}/${tx.bigLabel} round-4 treatments.${src}`
+        : n === 100
+          ? `DLM 2005 &sect;I pins the original design at six subjects &mdash; ${paperQuote} This simulator scales the population to N = 100 for a thicker order book while preserving the four-round session structure.${src}`
+          : `DLM 2005 &sect;I pins the original design at six subjects &mdash; ${paperQuote} This session is running at an intermediate scale N = ${n}, with round-4 treatments ${tx.smallLabel}/${tx.bigLabel} interpolated linearly between the paper (6 &rarr; T2/T4) and scaled (100 &rarr; T20/T40) endpoints.${src}`;
     }
 
     const smallLabel = document.querySelector('.tx-small-label');

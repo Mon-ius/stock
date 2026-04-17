@@ -1277,19 +1277,9 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   color: var(--fg-0);
 }
 /* Per-option accent overrides in the Advanced settings panel.
-   "N = 100 · scaled" gets teal to mark the scaled-up thick-book regime
-   that diverges from the paper's six-subject design; "Complex Dividends"
-   gets purple to mark the bounded-rationality dividend distribution. */
-.dlm-treatment-opt:has(input[name="adv-n-total"][value="100"]):hover {
-  border-color: var(--teal);
-}
-.dlm-treatment-opt:has(input[name="adv-n-total"][value="100"]) input[type="radio"] {
-  accent-color: var(--teal);
-}
-.dlm-treatment-opt:has(input[name="adv-n-total"][value="100"]:checked) {
-  border-color: var(--teal);
-  background: color-mix(in srgb, var(--teal) 12%, var(--bg-1));
-}
+   "Complex Dividends" gets purple to mark the bounded-rationality
+   dividend distribution. The population-scale slider tile uses the
+   shared .scale-tile rules further below (teal accent). */
 .dlm-treatment-opt:has(#p-applyComplexDividends):hover {
   border-color: var(--purple);
 }
@@ -1316,7 +1306,8 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    threshold is non-zero, and the tile's border turns red whenever
    the threshold is non-zero (driven by JS via .regulator-active). */
 body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
-.dlm-treatment-opt.regulator-tile {
+.dlm-treatment-opt.regulator-tile,
+.dlm-treatment-opt.scale-tile {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
@@ -1326,7 +1317,11 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .dlm-treatment-opt.regulator-tile:hover {
   border-color: var(--red);
 }
-.dlm-treatment-opt.regulator-tile .param-head label {
+.dlm-treatment-opt.scale-tile:hover {
+  border-color: var(--teal);
+}
+.dlm-treatment-opt.regulator-tile .param-head label,
+.dlm-treatment-opt.scale-tile .param-head label {
   cursor: pointer;
   overflow: visible;
   white-space: normal;
@@ -1334,11 +1329,13 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
   align-items: baseline;
   gap: 6px;
 }
-.dlm-treatment-opt.regulator-tile .param-head label math {
+.dlm-treatment-opt.regulator-tile .param-head label math,
+.dlm-treatment-opt.scale-tile .param-head label math {
   font-size: 11px;
   color: var(--fg-3);
 }
-.dlm-treatment-opt.regulator-tile .param-head .pval {
+.dlm-treatment-opt.regulator-tile .param-head .pval,
+.dlm-treatment-opt.scale-tile .param-head .pval {
   color: var(--fg-3);
   background: var(--bg-3);
   min-width: 44px;
@@ -1351,7 +1348,16 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
   color: #fff;
   background: var(--red);
 }
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider {
+.dlm-treatment-opt.scale-tile {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 8%, var(--bg-1));
+}
+.dlm-treatment-opt.scale-tile .param-head .pval {
+  color: #fff;
+  background: var(--teal);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
@@ -1363,7 +1369,12 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
   --accent: var(--red);
   --accent-light: color-mix(in srgb, var(--red) 22%, transparent);
 }
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-webkit-slider-runnable-track {
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider {
+  --accent: var(--teal);
+  --accent-light: color-mix(in srgb, var(--teal) 22%, transparent);
+}
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-webkit-slider-runnable-track,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider::-webkit-slider-runnable-track {
   height: 5px;
   border-radius: 999px;
   background: linear-gradient(
@@ -1374,17 +1385,20 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
     var(--bg-3)   100%
   );
 }
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-track {
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-track,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider::-moz-range-track {
   height: 5px;
   border-radius: 999px;
   background: var(--bg-3);
 }
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-progress {
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-progress,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider::-moz-range-progress {
   height: 5px;
   border-radius: 999px;
   background: var(--accent);
 }
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-webkit-slider-thumb {
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-webkit-slider-thumb,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 16px;
@@ -1396,7 +1410,8 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
   box-shadow: var(--shadow-sm);
   transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
 }
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-thumb {
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider::-moz-range-thumb,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -1406,12 +1421,16 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
   transition: transform 0.12s var(--ease), box-shadow 0.18s var(--ease);
 }
 .dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:hover::-webkit-slider-thumb,
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:focus::-webkit-slider-thumb {
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:focus::-webkit-slider-thumb,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider:hover::-webkit-slider-thumb,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider:focus::-webkit-slider-thumb {
   transform: scale(1.12);
   box-shadow: 0 0 0 6px var(--accent-light);
 }
 .dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:hover::-moz-range-thumb,
-.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:focus::-moz-range-thumb {
+.dlm-treatment-opt.regulator-tile input[type=range].regulator-slider:focus::-moz-range-thumb,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider:hover::-moz-range-thumb,
+.dlm-treatment-opt.scale-tile input[type=range].scale-slider:focus::-moz-range-thumb {
   transform: scale(1.12);
   box-shadow: 0 0 0 6px var(--accent-light);
 }
