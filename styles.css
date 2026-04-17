@@ -1513,6 +1513,23 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
    the panel reads as the same grid in both axes (no surprise jump
    between the first row and the rest). */
 .const-sim   .psec-body { gap: 10px; }
+/* Advanced settings panel accent — mirrors the AI-endpoint panel
+   (.wang-only / .plan-ii-only / .plan-iii-only) open-state border +
+   shadow + summary-color recipe, but uses --purple instead of --pink
+   so the two panels read as siblings with distinct but parallel
+   accents. The summary citation keeps its muted italic treatment but
+   takes a purple-tinted foreground. */
+.const-sim[open] {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--purple) 28%, transparent),
+              var(--shadow-sm);
+}
+.const-sim > summary {
+  color: var(--purple);
+}
+.const-sim > summary .const-cite {
+  color: color-mix(in srgb, var(--purple) 70%, var(--fg-3));
+}
 .const-paper summary .const-cite,
 .const-sim   summary .const-cite {
   margin-left: auto;
