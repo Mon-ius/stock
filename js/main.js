@@ -1157,25 +1157,29 @@ const App = {
     this._ensureSessionRates();
     const hi = this.SESSION_RATE_MAX || 0.5;
     const summary = document.getElementById('session-mix-summary');
-    const fmtPct = (rate) => `${Math.round(rate * 100)}%`;
+    // The slider bar operates in percent (see _rebuildSessionRateGrid),
+    // but the Trade-settings chips and the aggregate readout still
+    // report the *integer* treatment count derived from rate × N — so
+    // the session summary reads the same `T{n}` vocabulary as the
+    // legacy UI and the batch-results table.
     if (summary) {
       summary.innerHTML = '';
       for (let s = 0; s < 10; s++) {
         const rate = this.sessionRates[s];
+        const tn   = this._rateToTreatment(rate);
         const chip = document.createElement('span');
         chip.className = 'session-chip';
-        chip.dataset.rate = String(rate);
-        // Intensity is the fraction of the slider's active band, so a
-        // chip at 10% is faint and a chip at 50% is saturated amber.
+        chip.dataset.rate = String(tn);
         chip.style.setProperty('--intensity', String(Math.max(0, Math.min(1, rate / hi))));
-        chip.innerHTML = `<span class="session-chip-idx">S${s + 1}</span><span class="session-chip-val">${fmtPct(rate)}</span>`;
+        chip.innerHTML = `<span class="session-chip-idx">S${s + 1}</span><span class="session-chip-val">T${tn}</span>`;
         summary.appendChild(chip);
       }
     }
     const advOut = document.getElementById('v-adv-session-rates');
     if (advOut) {
-      const mean = this.sessionRates.reduce((a, b) => a + b, 0) / 10;
-      advOut.textContent = `mean ${fmtPct(mean)}`;
+      const meanRate = this.sessionRates.reduce((a, b) => a + b, 0) / 10;
+      const meanTn   = this._rateToTreatment(meanRate);
+      advOut.textContent = `mean T${meanTn}`;
     }
   },
 
