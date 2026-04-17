@@ -133,11 +133,12 @@ const App = {
   // clamped automatically when the user shrinks R below the current r.
   replacementRound: 4,
 
-  // Share of the 10-session batch that runs the small treatment (the
-  // rest runs the big one). 50 reproduces DLM 2005's 5 × small +
-  // 5 × big; the slider rounds to the nearest multiple of 10 so the
-  // session counts always stay integers.
-  sessionSplitPct: 50,
+  // Per-session treatment sizes for the 10-session batch (integers in
+  // [0, TOTAL_N]). Default seed reproduces DLM 2005 at the symmetric
+  // split once setTotalN fires for the first time: sessions 1-5 take
+  // T-small, sessions 6-10 take T-big. Values populate lazily in
+  // rebuild() because we need _treatmentsFor(TOTAL_N) to resolve first.
+  sessionRates: null,
 
   // Session counter for the 10-session batch. 0 = idle/pre-run,
   // 1-10 during a batch. Updated by start() at every session
@@ -487,32 +488,15 @@ const App = {
     });
     this._syncPlanButtons();
 
-    // Session-split slider (0…100%, step 10). Drives the integer count
-    // of small-treatment sessions in the 10-session batch; the
-    // remainder use the big treatment. The Trade-settings panel shows
-    // the computed N_small / N_big split in a live summary tile.
-    const advSplit    = document.getElementById('p-adv-session-split');
-    const advSplitOut = document.getElementById('v-adv-session-split');
-    if (advSplit) {
-      const _clampSplit = v => {
-        const x = Math.max(0, Math.min(100, Number(v) | 0 || 0));
-        return Math.round(x / 10) * 10;
-      };
-      advSplit.addEventListener('input', () => {
-        const x = _clampSplit(advSplit.value);
-        const small = Math.round(x / 10);
-        const big   = 10 - small;
-        if (advSplitOut) advSplitOut.textContent = `${small} / ${big}`;
-        this._updateSliderPct(advSplit);
-        this._syncSessionMixUi();
-      });
-      advSplit.addEventListener('change', () => {
-        const x = _clampSplit(advSplit.value);
-        this.sessionSplitPct = x;
-        this._syncSessionMixUi();
-        this.reset();
-      });
-    }
+    // Per-session treatment-size grid. 10 compact sliders (one per
+    // session), each spanning [0, TOTAL_N]. Built here once with the
+    // current N as the upper bound; _rebuildSessionRateGrid rebuilds
+    // the DOM from App.sessionRates whenever N or the underlying array
+    // changes. Live `input` updates the chip summary; `change` commits
+    // to App.sessionRates and triggers a reset so the next Start
+    // picks up the new schedule.
+    this._ensureSessionRates();
+    this._rebuildSessionRateGrid();
 
     // Advanced settings — continuous population-scale slider (6 … 100).
     // The slider rewrites mix, treatmentSize, treatment radio labels,
@@ -590,9 +574,6 @@ const App = {
     // Keep the paper-constants round card synced with the current
     // (R, r) pair in case defaults differ from the static HTML.
     this._syncRoundsUi();
-    // Seed the Trade-settings session-mix summary from the current
-    // split so the panel reads correctly before any slider interaction.
-    this._syncSessionMixUi();
 
     // Foldable panel header — click anywhere on the strip to toggle
     // the body visibility. Mirrors the pattern used by the lying
@@ -1012,40 +993,124 @@ const App = {
           : `DLM 2005 &sect;I pins the original design at six subjects &mdash; ${paperQuote} This session is running at an intermediate scale N = ${n}, with round-4 treatments ${tx.smallLabel}/${tx.bigLabel} interpolated linearly between the paper (6 &rarr; T2/T4) and scaled (100 &rarr; T20/T40) endpoints.${src}`;
     }
 
-    // Refresh the treatment labels wherever they render (Trade-settings
-    // session-mix summary uses the .tx-small-label / .tx-big-label
-    // spans; so do the batch-result tables). querySelectorAll returns
-    // a NodeList so every occurrence updates in a single pass.
+    // Refresh the treatment labels wherever they render (.tx-small-label
+    // / .tx-big-label still appear in batch-result tables and copy,
+    // even though the Trade-settings chip row no longer uses them).
+    // querySelectorAll returns a NodeList so every occurrence updates
+    // in a single pass.
     document.querySelectorAll('.tx-small-label').forEach(el => { el.textContent = tx.smallLabel; });
     document.querySelectorAll('.tx-big-label').forEach(el   => { el.textContent = tx.bigLabel;   });
 
-    this._syncSessionMixUi();
+    // Reseed the per-session rate schedule to the new N's default
+    // (first 5 at T-small, last 5 at T-big) — N is a structural knob,
+    // and preserving a custom schedule from an old N rarely lines up
+    // with the new treatment sizes. Users can re-dial the per-session
+    // sliders afterward; _rebuildSessionRateGrid rebuilds the DOM
+    // with the new slider maxes.
+    this.sessionRates = null;
+    this._rebuildSessionRateGrid();
     this.reset();
   },
 
   /**
-   * Sync the Trade-settings session-mix summary and the Advanced-settings
-   * split-slider readout from the current sessionSplitPct + treatment
-   * labels. Safe to call at any time; it reads the current TOTAL_N to
-   * derive tx.smallLabel / tx.bigLabel fresh every invocation.
+   * Ensure App.sessionRates is a populated 10-integer array for the
+   * current TOTAL_N. Called from init and from setTotalN so the array
+   * survives a population rescale; values get clamped to [0, TOTAL_N]
+   * on N-shrink, and a fresh default (5 × T-small + 5 × T-big) seeds
+   * the array the first time this runs.
+   */
+  _ensureSessionRates() {
+    const tx = this._treatmentsFor(this.TOTAL_N);
+    if (!Array.isArray(this.sessionRates) || this.sessionRates.length !== 10) {
+      this.sessionRates = new Array(10).fill(0).map((_, i) => i < 5 ? tx.small : tx.big);
+      return;
+    }
+    for (let i = 0; i < 10; i++) {
+      this.sessionRates[i] = Math.max(0, Math.min(this.TOTAL_N, this.sessionRates[i] | 0));
+    }
+  },
+
+  /**
+   * (Re)build the Advanced-settings per-session slider grid from the
+   * current App.sessionRates + TOTAL_N. Called on init and whenever N
+   * changes (slider max depends on N). Attaches input/change handlers
+   * inline — `input` updates the chip summary live without reseeding,
+   * `change` writes back to sessionRates and calls reset() so the new
+   * schedule is picked up on the next Start.
+   */
+  _rebuildSessionRateGrid() {
+    const grid = document.getElementById('session-rate-grid');
+    if (!grid) return;
+    this._ensureSessionRates();
+    const N = this.TOTAL_N;
+    grid.innerHTML = '';
+    for (let s = 0; s < 10; s++) {
+      const row = document.createElement('div');
+      row.className = 'session-rate-item';
+
+      const idx = document.createElement('span');
+      idx.className = 'session-rate-idx';
+      idx.textContent = `S${s + 1}`;
+
+      const sl = document.createElement('input');
+      sl.type = 'range';
+      sl.className = 'session-rate-slider';
+      sl.min = '0';
+      sl.max = String(N);
+      sl.step = '1';
+      sl.value = String(this.sessionRates[s]);
+      sl.dataset.session = String(s);
+
+      const val = document.createElement('span');
+      val.className = 'session-rate-val';
+      val.textContent = `T${this.sessionRates[s]}`;
+
+      sl.addEventListener('input', () => {
+        const v = Math.max(0, Math.min(N, Number(sl.value) | 0));
+        val.textContent = `T${v}`;
+        this.sessionRates[s] = v;
+        this._updateSliderPct(sl);
+        this._syncSessionMixUi();
+      });
+      sl.addEventListener('change', () => {
+        this.reset();
+      });
+
+      row.appendChild(idx);
+      row.appendChild(sl);
+      row.appendChild(val);
+      grid.appendChild(row);
+      this._updateSliderPct(sl);
+    }
+    this._syncSessionMixUi();
+  },
+
+  /**
+   * Sync the Trade-settings session-mix summary + the Advanced-settings
+   * rate-tile readout from the current App.sessionRates. Safe to call
+   * any time. Builds 10 chips (one per session) with a rate-weighted
+   * amber tint so the user can eyeball the schedule's distribution.
    */
   _syncSessionMixUi() {
-    const pct = Math.max(0, Math.min(100, Math.round((this.sessionSplitPct || 0) / 10) * 10));
-    const small = Math.round(pct / 10);
-    const big   = 10 - small;
-    const tx = this._treatmentsFor(this.TOTAL_N);
-    const countSmall = document.getElementById('session-count-small');
-    const countBig   = document.getElementById('session-count-big');
-    if (countSmall) countSmall.textContent = String(small);
-    if (countBig)   countBig.textContent   = String(big);
-    document.querySelectorAll('.tx-small-label').forEach(el => { el.textContent = tx.smallLabel; });
-    document.querySelectorAll('.tx-big-label').forEach(el   => { el.textContent = tx.bigLabel;   });
-    const advSplitOut = document.getElementById('v-adv-session-split');
-    if (advSplitOut) advSplitOut.textContent = `${small} / ${big}`;
-    const advSplit = document.getElementById('p-adv-session-split');
-    if (advSplit && Number(advSplit.value) !== pct) {
-      advSplit.value = String(pct);
-      this._updateSliderPct(advSplit);
+    this._ensureSessionRates();
+    const N = this.TOTAL_N || 1;
+    const summary = document.getElementById('session-mix-summary');
+    if (summary) {
+      summary.innerHTML = '';
+      for (let s = 0; s < 10; s++) {
+        const v = this.sessionRates[s] | 0;
+        const chip = document.createElement('span');
+        chip.className = 'session-chip';
+        chip.dataset.rate = String(v);
+        chip.style.setProperty('--intensity', String(v / N));
+        chip.innerHTML = `<span class="session-chip-idx">S${s + 1}</span><span class="session-chip-val">T${v}</span>`;
+        summary.appendChild(chip);
+      }
+    }
+    const advOut = document.getElementById('v-adv-session-rates');
+    if (advOut) {
+      const mean = this.sessionRates.reduce((a, b) => a + b, 0) / 10;
+      advOut.textContent = `mean T${Math.round(mean)}`;
     }
   },
 
@@ -1336,9 +1401,8 @@ const App = {
     }
 
     const SESSIONS = 10;
-    const tx        = this._treatmentsFor(this.TOTAL_N);
-    const pct       = Math.max(0, Math.min(100, Math.round((this.sessionSplitPct || 0) / 10) * 10));
-    const smallRuns = Math.round(pct / 10);
+    this._ensureSessionRates();
+    const rates = this.sessionRates.slice();
     this.batchResults = [];
     this._exportSessions = [];
     this._batchRunning = true;
@@ -1349,13 +1413,13 @@ const App = {
       if (s >= SESSIONS) {
         this._batchRunning = false;
         this.currentSession = 0;
-        this.treatmentSize = tx.small;
+        this.treatmentSize = rates[0] | 0;
         console.table(this.batchResults);
         if (btnExport) btnExport.disabled = false;
         this.requestRender();
         return;
       }
-      const treatment = s < smallRuns ? tx.small : tx.big;
+      const treatment = rates[s] | 0;
       this.treatmentSize = treatment;
       this.currentSession = s + 1;
       this.reset();
@@ -1367,7 +1431,7 @@ const App = {
       this.ctx.currentSession = this.currentSession;
 
       const sessionNum  = s + 1;
-      const txLabel     = treatment === tx.small ? tx.smallLabel : tx.bigLabel;
+      const txLabel     = `T${treatment}`;
       const totalShares = this.TOTAL_N * 3;
 
       // Collect one round's metrics as soon as it finishes, so Table 2

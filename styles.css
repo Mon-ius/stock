@@ -1250,56 +1250,51 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   gap: 10px;
 }
 /* Trade-settings session-mix summary — reports the computed treatment
-   composition of the 10-session batch driven by the Advanced-settings
-   Session-split slider. Layout mirrors a .dlm-treatment-opt tile so it
-   sits flush with the rest of the Trade-settings rows, but with a
-   teal/amber two-chunk layout separated by a "+" so the user sees at
-   a glance how the 10 sessions are partitioned. */
+   size used in each of the 10 batch sessions. Layout is a flex-wrap row
+   of 10 compact chips (one per session) so users can see the full
+   schedule at a glance, with each chip tinted by the rate relative to
+   the current population N. Driven by App._syncSessionMixUi, which
+   mirrors the Advanced-settings per-session sliders into this panel. */
 .session-mix-summary {
   flex: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 10px;
   background: var(--bg-1);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--fg-1);
 }
-.session-mix-chunk {
+.session-chip {
+  --intensity: 0;
+  flex: 1 0 auto;
+  min-width: 52px;
   display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-weight: 500;
-}
-.session-mix-chunk strong {
-  font-size: 15px;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--amber) calc(var(--intensity) * 22%), var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--amber) calc(var(--intensity) * 45% + 12%), var(--border));
   font-variant-numeric: tabular-nums;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.session-chip-idx {
+  font-size: 9px;
+  color: var(--fg-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.session-chip-val {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--fg-0);
 }
-.session-mix-chunk .session-mix-label { color: var(--fg-2); font-weight: 400; }
-.session-mix-small {
-  background: color-mix(in srgb, var(--teal) 14%, var(--bg-1));
-  border: 1px solid color-mix(in srgb, var(--teal) 40%, var(--border));
-}
-.session-mix-big {
-  background: color-mix(in srgb, var(--amber, #f59e0b) 14%, var(--bg-1));
-  border: 1px solid color-mix(in srgb, var(--amber, #f59e0b) 40%, var(--border));
-}
-.session-mix-plus {
-  font-size: 14px;
-  color: var(--fg-3);
-  font-weight: 500;
-}
-.session-mix-total {
-  margin-left: auto;
-  color: var(--fg-3);
-  font-size: 11px;
-  white-space: nowrap;
-}
+.session-chip[data-rate="0"] .session-chip-val { color: var(--fg-3); font-weight: 400; }
 .dlm-treatment-opt {
   flex: 1;
   display: flex;
@@ -1407,6 +1402,118 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
   color: #fff;
   background: var(--teal);
   min-width: 72px;
+}
+/* Amber variant of the scale-tile for session-structural controls
+   (R, r, per-session rates) — shares the layout of the teal tile
+   but repaints the accent so the Population-N control stays visually
+   distinct from everything that's about session cadence. */
+.dlm-treatment-opt.scale-tile.scale-tile-amber {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 8%, var(--bg-1));
+}
+.dlm-treatment-opt.scale-tile.scale-tile-amber:hover {
+  border-color: var(--amber);
+}
+.dlm-treatment-opt.scale-tile.scale-tile-amber .param-head .pval {
+  background: var(--amber);
+}
+.dlm-treatment-opt.scale-tile.scale-tile-amber input[type=range].scale-slider {
+  --accent: var(--amber);
+  --accent-light: color-mix(in srgb, var(--amber) 22%, transparent);
+}
+/* Per-session rate grid — 10 compact slider rows nested inside the
+   scale-tile-amber host. Layout is a 2-column grid so the vertical
+   footprint stays reasonable inside the fixed-width sidebar. */
+.session-rate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  width: 100%;
+}
+.session-rate-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-2);
+}
+.session-rate-idx {
+  min-width: 22px;
+  color: var(--fg-3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.session-rate-item input[type=range].session-rate-slider {
+  flex: 1;
+  height: 18px;
+  --pct: 20%;
+  --accent: var(--amber);
+  --accent-light: color-mix(in srgb, var(--amber) 22%, transparent);
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+}
+.session-rate-item input[type=range].session-rate-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--pct),
+    var(--bg-3)   var(--pct),
+    var(--bg-3)   100%
+  );
+}
+.session-rate-item input[type=range].session-rate-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--bg-3);
+}
+.session-rate-item input[type=range].session-rate-slider::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.session-rate-item input[type=range].session-rate-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 1.5px solid var(--accent);
+  margin-top: -3.5px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease);
+}
+.session-rate-item input[type=range].session-rate-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 1.5px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s var(--ease);
+}
+.session-rate-item input[type=range].session-rate-slider:hover::-webkit-slider-thumb,
+.session-rate-item input[type=range].session-rate-slider:focus::-webkit-slider-thumb {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+.session-rate-item input[type=range].session-rate-slider:hover::-moz-range-thumb,
+.session-rate-item input[type=range].session-rate-slider:focus::-moz-range-thumb {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+.session-rate-val {
+  min-width: 32px;
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-1);
 }
 .dlm-treatment-opt.regulator-tile input[type=range].regulator-slider,
 .dlm-treatment-opt.scale-tile input[type=range].scale-slider {
