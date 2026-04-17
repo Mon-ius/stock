@@ -101,6 +101,16 @@ const Sym = {
     _sub(_mi('ρ'), _mi('t')), _mo('='),
     _frac(_sub(_mi('P'), _mi('t')), _sub(_row(_mi('F'), _mi('V')), _mi('t'))),
   )),
+  bubbleRatio: _wrap(_row(                                                    // |P_t/FV_t − 1| ≥ θ
+    _abs(_row(
+      _frac(_sub(_mi('P'), _mi('t')), _sub(_row(_mi('F'), _mi('V')), _mi('t'))),
+      _mo('−'),
+      _mn('1'),
+    )),
+    _mo('≥'),
+    _mi('θ'),
+  )),
+  theta:     _wrap(_mi('θ')),                                                 // θ
   muD:       _wrap(_sub(_mi('μ'), _mi('d'))),                                 // μ_d
   bigT:      _wrap(_mi('T')),                                                 // T
   bigQ:      _wrap(_mi('Q')),                                                 // Q

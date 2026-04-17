@@ -269,9 +269,9 @@
           </div>
           <div class="param-row dlm-treatment-row plan-llm-only">
             <div class="dlm-treatment-opt regulator-tile" data-tip="Regulator (Plan II / III only). The slider value θ is the bubble-ratio threshold |P_t − FV_t| / FV_t at which the regulator fires its one-shot warning. When θ = 0 the regulator is disabled. When θ > 0 the engine monitors the bubble ratio at every period boundary and the first time it crosses θ within a round it injects a REGULATOR WARNING into every Utility agent's LLM prompt for the rest of that round (cleared at the next round_start). Plan I has no LLM channel and ignores the warning.">
-              <div class="regulator-tile-head">
-                <label for="p-regulator-threshold">Regulator <span class="regulator-notation">|P/FV − 1| ≥ θ</span></label>
-                <span class="regulator-readout" id="v-regulator-threshold">off</span>
+              <div class="param-head">
+                <label for="p-regulator-threshold">Regulator <span data-sym="bubbleRatio"></span></label>
+                <span class="pval" id="v-regulator-threshold">off</span>
               </div>
               <input type="range" id="p-regulator-threshold" class="regulator-slider" min="0" max="100" step="1" value="0">
             </div>

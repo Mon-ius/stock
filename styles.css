@@ -1211,11 +1211,16 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
    Prior Bias / Prior Noise tiles (.dlm-treatment-opt) so the row
    sits visually flush with its siblings, but laid out as a stack
    (label + readout on top, slider below) so the threshold control
-   reads as one unit. Visible only under Plan II / Plan III (LLM
-   channels) since the warning is delivered through the LLM prompt;
-   .plan-llm-only is hidden for Plan I via the body-class rule. The
-   red accent is scoped here by overriding --accent / --accent-light
-   on the embedded slider, and the tile's border turns red whenever
+   reads as one unit. The header reuses .param-head / .pval exactly
+   like the Risk-preferences sliders above — same label typography,
+   same pill readout — and the formula is rendered via MathML
+   (data-sym="bubbleRatio") so the symbols line up with the rest of
+   the UI. Visible only under Plan II / Plan III (LLM channels) since
+   the warning is delivered through the LLM prompt; .plan-llm-only is
+   hidden for Plan I via the body-class rule. The red accent is
+   scoped here by overriding --accent / --accent-light on the
+   embedded slider, the readout pill switches to red when the
+   threshold is non-zero, and the tile's border turns red whenever
    the threshold is non-zero (driven by JS via .regulator-active). */
 body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .dlm-treatment-opt.regulator-tile {
@@ -1228,40 +1233,30 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .dlm-treatment-opt.regulator-tile:hover {
   border-color: var(--red);
 }
-.regulator-tile-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.regulator-tile-head label {
-  flex: 1;
+.dlm-treatment-opt.regulator-tile .param-head label {
   cursor: pointer;
+  overflow: visible;
+  white-space: normal;
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
 }
-.regulator-notation {
-  font-size: 10px;
+.dlm-treatment-opt.regulator-tile .param-head label math {
+  font-size: 11px;
   color: var(--fg-3);
-  font-weight: normal;
-  white-space: nowrap;
 }
-.regulator-readout {
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+.dlm-treatment-opt.regulator-tile .param-head .pval {
   color: var(--fg-3);
-  min-width: 32px;
-  text-align: right;
+  background: var(--bg-3);
+  min-width: 44px;
 }
 .dlm-treatment-opt.regulator-tile.regulator-active {
   border-color: var(--red);
   background: color-mix(in srgb, var(--red) 10%, var(--bg-1));
 }
-.dlm-treatment-opt.regulator-tile.regulator-active .regulator-readout {
-  color: var(--red);
-  font-weight: 600;
+.dlm-treatment-opt.regulator-tile.regulator-active .param-head .pval {
+  color: #fff;
+  background: var(--red);
 }
 .dlm-treatment-opt.regulator-tile input[type=range].regulator-slider {
   -webkit-appearance: none;
