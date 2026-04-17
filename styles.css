@@ -1249,6 +1249,57 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   display: flex;
   gap: 10px;
 }
+/* Trade-settings session-mix summary — reports the computed treatment
+   composition of the 10-session batch driven by the Advanced-settings
+   Session-split slider. Layout mirrors a .dlm-treatment-opt tile so it
+   sits flush with the rest of the Trade-settings rows, but with a
+   teal/amber two-chunk layout separated by a "+" so the user sees at
+   a glance how the 10 sessions are partitioned. */
+.session-mix-summary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--fg-1);
+}
+.session-mix-chunk {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.session-mix-chunk strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-0);
+}
+.session-mix-chunk .session-mix-label { color: var(--fg-2); font-weight: 400; }
+.session-mix-small {
+  background: color-mix(in srgb, var(--teal) 14%, var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--teal) 40%, var(--border));
+}
+.session-mix-big {
+  background: color-mix(in srgb, var(--amber, #f59e0b) 14%, var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--amber, #f59e0b) 40%, var(--border));
+}
+.session-mix-plus {
+  font-size: 14px;
+  color: var(--fg-3);
+  font-weight: 500;
+}
+.session-mix-total {
+  margin-left: auto;
+  color: var(--fg-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
 .dlm-treatment-opt {
   flex: 1;
   display: flex;

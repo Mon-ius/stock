@@ -133,6 +133,12 @@ const App = {
   // clamped automatically when the user shrinks R below the current r.
   replacementRound: 4,
 
+  // Share of the 10-session batch that runs the small treatment (the
+  // rest runs the big one). 50 reproduces DLM 2005's 5 × small +
+  // 5 × big; the slider rounds to the nearest multiple of 10 so the
+  // session counts always stay integers.
+  sessionSplitPct: 50,
+
   // Session counter for the 10-session batch. 0 = idle/pre-run,
   // 1-10 during a batch. Updated by start() at every session
   // boundary and reset to 0 by reset() or when the batch completes.
@@ -481,13 +487,32 @@ const App = {
     });
     this._syncPlanButtons();
 
-    // DLM treatment radio buttons (T20 / T40 at N = 100 — T2 / T4 at N = 6).
-    document.querySelectorAll('input[name="dlm-treatment"]').forEach(radio => {
-      radio.addEventListener('change', e => {
-        this.treatmentSize = Number(e.target.value);
+    // Session-split slider (0…100%, step 10). Drives the integer count
+    // of small-treatment sessions in the 10-session batch; the
+    // remainder use the big treatment. The Trade-settings panel shows
+    // the computed N_small / N_big split in a live summary tile.
+    const advSplit    = document.getElementById('p-adv-session-split');
+    const advSplitOut = document.getElementById('v-adv-session-split');
+    if (advSplit) {
+      const _clampSplit = v => {
+        const x = Math.max(0, Math.min(100, Number(v) | 0 || 0));
+        return Math.round(x / 10) * 10;
+      };
+      advSplit.addEventListener('input', () => {
+        const x = _clampSplit(advSplit.value);
+        const small = Math.round(x / 10);
+        const big   = 10 - small;
+        if (advSplitOut) advSplitOut.textContent = `${small} / ${big}`;
+        this._updateSliderPct(advSplit);
+        this._syncSessionMixUi();
+      });
+      advSplit.addEventListener('change', () => {
+        const x = _clampSplit(advSplit.value);
+        this.sessionSplitPct = x;
+        this._syncSessionMixUi();
         this.reset();
       });
-    });
+    }
 
     // Advanced settings — continuous population-scale slider (6 … 100).
     // The slider rewrites mix, treatmentSize, treatment radio labels,
@@ -565,6 +590,9 @@ const App = {
     // Keep the paper-constants round card synced with the current
     // (R, r) pair in case defaults differ from the static HTML.
     this._syncRoundsUi();
+    // Seed the Trade-settings session-mix summary from the current
+    // split so the panel reads correctly before any slider interaction.
+    this._syncSessionMixUi();
 
     // Foldable panel header — click anywhere on the strip to toggle
     // the body visibility. Mirrors the pattern used by the lying
@@ -984,19 +1012,41 @@ const App = {
           : `DLM 2005 &sect;I pins the original design at six subjects &mdash; ${paperQuote} This session is running at an intermediate scale N = ${n}, with round-4 treatments ${tx.smallLabel}/${tx.bigLabel} interpolated linearly between the paper (6 &rarr; T2/T4) and scaled (100 &rarr; T20/T40) endpoints.${src}`;
     }
 
-    const smallLabel = document.querySelector('.tx-small-label');
-    const bigLabel   = document.querySelector('.tx-big-label');
-    if (smallLabel) smallLabel.textContent = tx.smallLabel;
-    if (bigLabel)   bigLabel.textContent   = tx.bigLabel;
-    const radios = document.querySelectorAll('input[name="dlm-treatment"]');
-    if (radios.length >= 2) {
-      radios[0].value   = String(tx.small);
-      radios[1].value   = String(tx.big);
-      radios[0].checked = true;
-      radios[1].checked = false;
-    }
+    // Refresh the treatment labels wherever they render (Trade-settings
+    // session-mix summary uses the .tx-small-label / .tx-big-label
+    // spans; so do the batch-result tables). querySelectorAll returns
+    // a NodeList so every occurrence updates in a single pass.
+    document.querySelectorAll('.tx-small-label').forEach(el => { el.textContent = tx.smallLabel; });
+    document.querySelectorAll('.tx-big-label').forEach(el   => { el.textContent = tx.bigLabel;   });
 
+    this._syncSessionMixUi();
     this.reset();
+  },
+
+  /**
+   * Sync the Trade-settings session-mix summary and the Advanced-settings
+   * split-slider readout from the current sessionSplitPct + treatment
+   * labels. Safe to call at any time; it reads the current TOTAL_N to
+   * derive tx.smallLabel / tx.bigLabel fresh every invocation.
+   */
+  _syncSessionMixUi() {
+    const pct = Math.max(0, Math.min(100, Math.round((this.sessionSplitPct || 0) / 10) * 10));
+    const small = Math.round(pct / 10);
+    const big   = 10 - small;
+    const tx = this._treatmentsFor(this.TOTAL_N);
+    const countSmall = document.getElementById('session-count-small');
+    const countBig   = document.getElementById('session-count-big');
+    if (countSmall) countSmall.textContent = String(small);
+    if (countBig)   countBig.textContent   = String(big);
+    document.querySelectorAll('.tx-small-label').forEach(el => { el.textContent = tx.smallLabel; });
+    document.querySelectorAll('.tx-big-label').forEach(el   => { el.textContent = tx.bigLabel;   });
+    const advSplitOut = document.getElementById('v-adv-session-split');
+    if (advSplitOut) advSplitOut.textContent = `${small} / ${big}`;
+    const advSplit = document.getElementById('p-adv-session-split');
+    if (advSplit && Number(advSplit.value) !== pct) {
+      advSplit.value = String(pct);
+      this._updateSliderPct(advSplit);
+    }
   },
 
   _constrainMix() {
@@ -1262,10 +1312,11 @@ const App = {
   },
 
   /**
-   * Run the full DLM 2005 10-session batch. Sessions 1-5 use the
-   * first treatment (selected by the radio), sessions 6-10 use the
-   * other. Each session is a fresh 4-round game with a new seed and
-   * fresh agents, animated at the current Speed setting. The onEnd
+   * Run the 10-session batch. The Advanced-settings Session-split
+   * slider decides how many of the 10 sessions use the small treatment
+   * (round(split/10)); the rest use the big treatment. Sessions are
+   * ordered small-first. Each session is a fresh game with a new seed
+   * and fresh agents, animated at the current Speed setting. The onEnd
    * callback chains to the next session automatically.
    *
    * Plan II/III require an API key; Plan I runs immediately.
@@ -1285,9 +1336,9 @@ const App = {
     }
 
     const SESSIONS = 10;
-    const tx              = this._treatmentsFor(this.TOTAL_N);
-    const firstTreatment  = this.treatmentSize;
-    const secondTreatment = firstTreatment === tx.small ? tx.big : tx.small;
+    const tx        = this._treatmentsFor(this.TOTAL_N);
+    const pct       = Math.max(0, Math.min(100, Math.round((this.sessionSplitPct || 0) / 10) * 10));
+    const smallRuns = Math.round(pct / 10);
     this.batchResults = [];
     this._exportSessions = [];
     this._batchRunning = true;
@@ -1298,13 +1349,13 @@ const App = {
       if (s >= SESSIONS) {
         this._batchRunning = false;
         this.currentSession = 0;
-        this.treatmentSize = firstTreatment;
+        this.treatmentSize = tx.small;
         console.table(this.batchResults);
         if (btnExport) btnExport.disabled = false;
         this.requestRender();
         return;
       }
-      const treatment = s < 5 ? firstTreatment : secondTreatment;
+      const treatment = s < smallRuns ? tx.small : tx.big;
       this.treatmentSize = treatment;
       this.currentSession = s + 1;
       this.reset();

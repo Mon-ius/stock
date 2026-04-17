@@ -94,15 +94,19 @@
             </div>
             <input type="range" id="p-count-t" min="0" max="99" step="1" value="0">
           </div>
-          <div class="param-row dlm-treatment-row" id="dlm-treatment-row" data-tip="DLM 2005 10-session batch design: 5 sessions with the selected first treatment, then 5 sessions with the other. R4-⅔ replaces ⅓ of the population in round 4; R4-⅓ replaces ⅔. One click of Start runs all 10 sessions. The two sizes scale linearly with the N slider in Advanced settings (N = 6 ⇒ T2/T4, N = 100 ⇒ T20/T40).">
-            <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="20" checked>
-              <span><strong>First <span class="tx-small-label">T20</span></strong> · R4-&#8532;</span>
-            </label>
-            <label class="dlm-treatment-opt">
-              <input type="radio" name="dlm-treatment" value="40">
-              <span><strong>First <span class="tx-big-label">T40</span></strong> · R4-&#8531;</span>
-            </label>
+          <div class="param-row dlm-treatment-row" id="dlm-treatment-row" data-tip="DLM 2005 10-session batch composition. The Advanced settings slider 'Session split' controls how many of the 10 sessions use the small treatment; the remainder use the big one. Shown here as a computed mix (e.g. 5 × T20 + 5 × T40 at the default 50% split, scaling with the N slider).">
+            <div class="session-mix-summary" id="session-mix-summary">
+              <span class="session-mix-chunk session-mix-small">
+                <strong id="session-count-small">5</strong>
+                <span class="session-mix-label">× <span class="tx-small-label">T20</span></span>
+              </span>
+              <span class="session-mix-plus">+</span>
+              <span class="session-mix-chunk session-mix-big">
+                <strong id="session-count-big">5</strong>
+                <span class="session-mix-label">× <span class="tx-big-label">T40</span></span>
+              </span>
+              <span class="session-mix-total">= 10 sessions</span>
+            </div>
           </div>
         </div>
       </details>
@@ -255,6 +259,15 @@
                 <span class="pval" id="v-adv-replace-round">r = 4</span>
               </div>
               <input type="range" id="p-adv-replace-round" class="scale-slider" min="2" max="4" step="1" value="4">
+            </div>
+          </div>
+          <div class="param-row dlm-treatment-row" id="adv-split-row">
+            <div class="dlm-treatment-opt scale-tile" data-tip-id="advSessionSplit">
+              <div class="param-head">
+                <label for="p-adv-session-split">Session split <span class="pval-sub">small / big</span></label>
+                <span class="pval" id="v-adv-session-split">5 / 5</span>
+              </div>
+              <input type="range" id="p-adv-session-split" class="scale-slider" min="0" max="100" step="10" value="50">
             </div>
           </div>
           <div class="param-row dlm-treatment-row">
@@ -1934,6 +1947,11 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
   <p>DLM 2005 pins <span data-sym="bigR"></span> = 4 (the paper default). The 10-session batch runner still runs 10 sessions regardless, so raising <span data-sym="bigR"></span> lengthens every session to <span data-sym="bigR"></span> · <span data-sym="bigT"></span> · K ticks while holding the number of sessions fixed.</p>
   <p>Cross-round learning (<code>roundsPlayed</code>, trust, belief mode) persists within a session and resets between sessions, so <span data-sym="bigR"></span> controls how much experience each cohort accumulates before the batch moves on.</p>
   <p>Changing <span data-sym="bigR"></span> clamps the replacement-round slider to [2, <span data-sym="bigR"></span>] and resets the engine.</p>
+</template>
+<template id="tpl-advSessionSplit">
+  <p>Session split — what fraction of the 10-session batch uses the small treatment (T-small). The complement uses the big treatment (T-big), and the Trade-settings panel shows the computed integer counts (e.g. <code>3 × T20 + 7 × T30</code> at 30%).</p>
+  <p>DLM 2005 fixes a 50/50 split (5 sessions per treatment); the slider lets you explore skewed designs — e.g. 80% small-treatment sessions to test whether thin-replacement dominates the composite bubble statistics, or 0 / 100% to run all 10 sessions under a single treatment.</p>
+  <p>Sessions are ordered small-first, so the first <code>round(split/10)</code> sessions draw the small treatment and the remaining sessions draw the big one. Changing the split reseeds the engine.</p>
 </template>
 <template id="tpl-advReplaceR">
   <p>Replacement round <span data-sym="smallR"></span> — the round boundary at which <code>treatmentSize</code> veterans are swapped for fresh agents (<code>roundsPlayed = 0</code>). DLM 2005 fixes <span data-sym="smallR"></span> = 4 so replacement happens at the end of round 3, giving newcomers three rounds of price history but none of their own experience.</p>
