@@ -1190,7 +1190,6 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
 .dlm-treatment-row {
   display: flex;
   gap: 10px;
-  margin-top: 4px;
 }
 .dlm-treatment-opt {
   flex: 1;
@@ -1508,8 +1507,12 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
    grid — their dense card lists need the width to breathe. */
 .panel-params .params-body > .const-paper,
 .panel-params .params-body > .const-sim { grid-column: 1 / -1; }
-.const-paper .psec-body,
-.const-sim   .psec-body { gap: 0; }
+.const-paper .psec-body { gap: 0; }
+/* Advanced settings stack: a uniform 10px gap matches the inter-tile
+   gap inside each .dlm-treatment-row, so the row-to-row rhythm in
+   the panel reads as the same grid in both axes (no surprise jump
+   between the first row and the rest). */
+.const-sim   .psec-body { gap: 10px; }
 .const-paper summary .const-cite,
 .const-sim   summary .const-cite {
   margin-left: auto;
