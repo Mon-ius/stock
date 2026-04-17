@@ -556,6 +556,14 @@ class UtilityAgent extends Agent {
     const inventory = opts.inventory != null ? opts.inventory : 3;
     super(id, 'utility', cash, inventory, name);
     this.riskPref       = opts.riskPref       || 'neutral';
+    // CRRA coefficient — set once at sampling time from the per-category
+    // ρ range (see sampleRho in js/utility.js). Falls back to the
+    // category midpoint when a spec from an older replay is loaded.
+    this.rho            = (opts.rho != null && Number.isFinite(opts.rho))
+      ? opts.rho
+      : (typeof CRRA_RHO_RANGES !== 'undefined'
+          ? (CRRA_RHO_RANGES[this.riskPref] || CRRA_RHO_RANGES.neutral).mid
+          : 0);
     this.biasMode       = opts.biasMode       || 'none';
     this.biasAmount     = opts.biasAmount     || 0;
     this.valuationNoise = opts.valuationNoise != null ? opts.valuationNoise : UTILITY_DEFAULTS.valuationNoise;
@@ -746,7 +754,7 @@ class UtilityAgent extends Agent {
     const cash = this.cash;
     const inv  = this.inventory;
     const w0   = cash + inv * v;
-    const U    = (w) => computeUtility(this.riskPref, w, this.initialWealth);
+    const U    = (w) => computeUtility(this.riskPref, w, this.initialWealth, this.rho);
     const U0   = U(w0);
     const pFill       = tunable(ctx, 'passiveFillProb');
     const passiveBidLo = tunable(ctx, 'passiveBidLo');
@@ -1206,6 +1214,10 @@ function sampleAgents(mix, rng, options = {}) {
     const cycle = Math.floor(i / 6);
     const slotTag = `U${(i % 6) + 1}`;
     const e = sampleEndowment(rng, dist);
+    // ρ ~ U[range] per category (CRRA_RHO_RANGES in js/utility.js).
+    // Drawing from the sampling RNG keeps reproducibility intact:
+    // the same (seed, mix) pair produces the same ρ vector every time.
+    const rho = sampleRho(risk, rng);
     specs.push({
       id, slot: id, type: 'utility',
       typeLabel:     cycle > 0 ? `${slotTag}·${cycle + 1}` : slotTag,
@@ -1213,6 +1225,7 @@ function sampleAgents(mix, rng, options = {}) {
       cash:          e.cash,
       inventory:     e.inventory,
       riskPref:      risk,
+      rho,
       biasMode:      'none',
       biasAmount:    0,
       deceptionMode: 'honest',
@@ -1257,6 +1270,7 @@ function buildAgentsFromSpecs(specs, overrides = {}) {
         const opts = {
           cash, inventory: inv,
           riskPref:       s.riskPref,
+          rho:            s.rho,
           biasMode:       s.biasMode,
           biasAmount:     s.biasAmount,
           deceptionMode:  s.deceptionMode,

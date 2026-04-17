@@ -17,23 +17,10 @@ const UI = {
     dlm:            'DLM trader',
     utility:        'Utility',
   },
-  // Paper-symbol cross-reference for each utility-agent risk preference
-  // and each classic strategy type. Both maps key into Sym (js/mathml.js),
-  // so every symbol rendered here goes through the same MathML source of
-  // truth as the static HTML notes and figure captions.
-  _riskSym: {
-    loving:  'uLoving',
-    neutral: 'uNeutral',
-    averse:  'uAverse',
-  },
-  // Exact normalized utility functionals — keyed into Sym so each
-  // Utility agent card can render its per-agent welfare function
-  // in the same MathML source of truth as every other symbol.
-  _riskFormula: {
-    loving:  'uLovingNorm',
-    neutral: 'uNeutralNorm',
-    averse:  'uAverseNorm',
-  },
+  // Classic agent-type symbols. Utility agents no longer use a per-
+  // category symbol map: the universal CRRA form means every utility
+  // agent renders the same formula, distinguished only by its
+  // per-agent ρᵢ coefficient (rendered directly on the card).
   _typeSym: {
     fundamentalist: 'inF',
     trend:          'inT',
@@ -429,10 +416,24 @@ const UI = {
       const subtitle = isUtil
         ? (UI._riskLabel[a.riskPref] || a.riskPref)
         : (UI._typeLabel[a.type] || a.type);
-      const subtitleKey = isUtil
-        ? UI._riskSym[a.riskPref]
-        : UI._typeSym[a.type];
-      const subtitleSym = (subtitleKey && window.Sym) ? window.Sym[subtitleKey] : '';
+      // Non-utility agents keep their class-membership symbol (i ∈ F, …).
+      // Utility agents now display the agent's CRRA coefficient ρ_i
+      // directly in the subtitle so the per-agent variety inside each
+      // category is visible at a glance. The MathML symbol is rhoI and
+      // the numeric suffix is the sampled ρ clamped to 2 decimals.
+      let subtitleSym = '';
+      if (isUtil) {
+        const sym = window.Sym || {};
+        const rhoVal = (a.rho != null && Number.isFinite(a.rho))
+          ? a.rho.toFixed(2)
+          : '—';
+        subtitleSym = `<span class="sym">${sym.rhoI || ''}</span>\u00a0=\u00a0${rhoVal}`;
+      } else {
+        const key = UI._typeSym[a.type];
+        subtitleSym = (key && window.Sym && window.Sym[key])
+          ? `<span class="sym">${window.Sym[key]}</span>`
+          : '';
+      }
       const sym = window.Sym || {};
       const displayName = a.name || ('A' + a.id);
       // Experience and replacement badges — shown for every agent type
@@ -450,12 +451,12 @@ const UI = {
         : '';
       const badgeRow = `<div class="dlm-badges">${endowBadge}${expBadge}${freshBadge}</div>`;
       // Live-updating numeric values plus the agent's exact welfare
-      // functional. The utility row is pinned to the per-agent
-      // riskPref via _riskFormula, so every U-agent card carries the
-      // same equation the decision engine actually evaluates in
-      // computeUtility() (js/utility.js).
-      const formulaKey = isUtil ? UI._riskFormula[a.riskPref] : '';
-      const formulaSym = (formulaKey && window.Sym) ? window.Sym[formulaKey] : '';
+      // functional. Every utility agent now evaluates the same
+      // universal CRRA form; what differs is the per-agent ρ drawn
+      // from its risk category (js/utility.js sampleRho). The card
+      // renders the normalized RHS (w/w₀)^(1−ρ_i) so the subscript
+      // matches the rho badge in the subtitle.
+      const formulaSym = (window.Sym && window.Sym.uCRRANormI) ? window.Sym.uCRRANormI : '';
       const extraRows = isUtil ? `
           <span class="metric">Subj V <span class="sym">${sym.subjV || ''}</span></span> <span class="metric-val">${a.subjectiveValuation != null ? a.subjectiveValuation.toFixed(1) : '—'}</span>
           <span class="metric">Report <span class="sym">${sym.reportV || ''}</span></span> <span class="metric-val">${a.reportedValuation != null ? a.reportedValuation.toFixed(1) : '—'}</span>
@@ -524,7 +525,7 @@ const UI = {
               <div class="agent-header">
                 <div class="agent-head-left">
                   <div class="agent-name">${displayName}</div>
-                  <div class="agent-type">${subtitle}${subtitleSym ? ` <span class="sym">${subtitleSym}</span>` : ''}</div>
+                  <div class="agent-type">${subtitle}${subtitleSym ? ` ${subtitleSym}` : ''}</div>
                 </div>
                 <div class="agent-head-right">
                   <span class="last-action ${actionClass}">${actionLabel}</span>

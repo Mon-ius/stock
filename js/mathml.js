@@ -205,6 +205,32 @@ const Sym = {
   uAverseNorm:  _wrap(
     _sqrt(_frac(_mi('w'), _sub(_mi('w'), _mn('0')))),
   ),
+  /* Universal CRRA — the single functional form every agent shares. ρ
+     is per-agent (sampled uniformly within the agent's risk-preference
+     category). uCRRA renders the general family; uCRRANormI renders the
+     normalized form with the agent's subscript; rhoI is the per-agent
+     coefficient and rhoSym is the bare symbol used in slider labels. */
+  rhoSym:    _wrap(_mi('ρ')),                                                   // ρ
+  rhoI:      _wrap(_sub(_mi('ρ'), _mi('i'))),                                   // ρ_i
+  uCRRA:     _wrap(_row(                                                        // U(w; ρ) = w^(1−ρ) / (1−ρ)
+    _mi('U'), _mo('('), _mi('w'), _mo(';'), _mi('ρ'), _mo(')'), _mo('='),
+    _frac(
+      _sup(_mi('w'), _row(_mn('1'), _mo('−'), _mi('ρ'))),
+      _row(_mn('1'), _mo('−'), _mi('ρ')),
+    ),
+  )),
+  uCRRANorm: _wrap(                                                             // (w / w₀)^(1 − ρ)
+    _sup(
+      _row(_mo('('), _frac(_mi('w'), _sub(_mi('w'), _mn('0'))), _mo(')')),
+      _row(_mn('1'), _mo('−'), _mi('ρ')),
+    ),
+  ),
+  uCRRANormI: _wrap(                                                            // (w / w₀)^(1 − ρ_i)
+    _sup(
+      _row(_mo('('), _frac(_mi('w'), _sub(_mi('w'), _mn('0'))), _mo(')')),
+      _row(_mn('1'), _mo('−'), _sub(_mi('ρ'), _mi('i'))),
+    ),
+  ),
   uOfW:      _wrap(_row(_sub(_mi('U'), _mi('i')), _mo('('), _mi('w'), _mo(')'))),   // U_i(w)
   uDef:      _wrap(_row(                                                            // u_{i,t} = U_i(w_{i,t}) / U_i(w_{i,0})
     _sub(_mi('u'), _it), _mo('='),

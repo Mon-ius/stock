@@ -592,6 +592,7 @@ class Engine {
         endowmentType:    a.endowmentType,
         // Extended fields (undefined for legacy agents — harmless).
         riskPref:            a.riskPref,
+        rho:                 a.rho,
         trueValuation:       a.trueValuation,
         subjectiveValuation: a.subjectiveValuation,
         reportedValuation:   a.reportedValuation,

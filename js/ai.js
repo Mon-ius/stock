@@ -390,10 +390,21 @@ const AI = {
       risk === 'loving' ? 'More willing to take risks, less sensitive to losses' :
       risk === 'averse' ? 'More averse to wealth volatility, more sensitive to losses' :
                           'Makes decisions based on expected returns';
-    const formulaOf = (risk) =>
-      risk === 'loving' ? 'U_L(w) = (w / w0)^2  (strictly convex, upside-seeking)' :
-      risk === 'averse' ? 'U_A(w) = sqrt(w / w0)  (strictly concave, downside-fearing)' :
-                          'U_N(w) = w / w0  (linear, EV-indifferent)';
+    // Universal CRRA (constant relative risk aversion). Every agent
+    // shares the same functional form; what distinguishes them is the
+    // per-agent ρ coefficient sampled uniformly within their risk
+    // category (see sampleRho in js/utility.js). The prompt emits the
+    // normalized form U(w) = (w / w0)^(1 − ρ) with the agent's actual
+    // ρ value substituted in, so the LLM sees the exact curve the
+    // EU evaluator uses.
+    const formulaOf = (risk, rho) => {
+      const r = (rho != null && Number.isFinite(rho)) ? rho.toFixed(3) : '0.000';
+      const shape =
+        risk === 'loving' ? 'strictly convex, upside-seeking' :
+        risk === 'averse' ? 'strictly concave, downside-fearing' :
+                            'linear, EV-indifferent';
+      return `U(w; ρ) = (w / w0)^(1 − ρ), with ρ = ${r}  (${shape})`;
+    };
 
     const promptFor = (a) => {
       const exp = a.roundsPlayed | 0;
@@ -469,7 +480,7 @@ const AI = {
       // Plan II — explicit utility formula.
       if (plan === 'II') {
         lines.push(
-          `- Your utility function: ${formulaOf(a.riskPref)}`,
+          `- Your utility function: ${formulaOf(a.riskPref, a.rho)}`,
           `  w0 (initial wealth) = ${Math.round(a.initialWealth)} cents.`,
         );
       }

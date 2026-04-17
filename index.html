@@ -110,23 +110,23 @@
               <div class="seg seg-averse"><span>33%</span></div>
             </div>
           </div>
-          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. U(w) = (w/w₀)² — strictly convex, so upside outcomes dominate expected-utility scoring. These agents bid aggressively and overshoot fundamental value; a high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. Every utility agent now shares the universal CRRA form U(w) = (w/w₀)^(1−ρ); loving agents draw ρᵢ ∼ U[−1, 0), so the curve is strictly convex and upside outcomes dominate. A high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
             <div class="param-head">
-              <label for="p-risk-loving">Risk-loving <span data-sym="alphaL"></span> · <span data-sym="uLoving"></span></label>
+              <label for="p-risk-loving">Risk-loving <span data-sym="alphaL"></span> · <span data-sym="rhoI"></span> ∈ [−1, 0)</label>
               <span class="pval" id="v-risk-loving">33%</span>
             </div>
             <input type="range" id="p-risk-loving" min="0" max="100" step="1" value="33">
           </div>
-          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. U(w) = w/w₀ — linear. These agents price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. Under the universal CRRA form U(w) = (w/w₀)^(1−ρ), neutral agents are pinned at ρ = 0 so the curve collapses to a linear w/w₀. They price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
             <div class="param-head">
-              <label for="p-risk-neutral">Risk-neutral <span data-sym="alphaN"></span> · <span data-sym="uNeutral"></span></label>
+              <label for="p-risk-neutral">Risk-neutral <span data-sym="alphaN"></span> · <span data-sym="rhoI"></span> = 0</label>
               <span class="pval" id="v-risk-neutral">34%</span>
             </div>
             <input type="range" id="p-risk-neutral" min="0" max="100" step="1" value="34">
           </div>
-          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. U(w) = √(w/w₀) — strictly concave, so downside losses dominate expected-utility scoring. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. Every utility agent now shares the universal CRRA form U(w) = (w/w₀)^(1−ρ); averse agents draw ρᵢ ∼ U(0, 1), so the curve is strictly concave and downside losses dominate. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
             <div class="param-head">
-              <label for="p-risk-averse">Risk-averse <span data-sym="alphaA"></span> · <span data-sym="uAverse"></span></label>
+              <label for="p-risk-averse">Risk-averse <span data-sym="alphaA"></span> · <span data-sym="rhoI"></span> ∈ (0, 1)</label>
               <span class="pval" id="v-risk-averse">33%</span>
             </div>
             <input type="range" id="p-risk-averse" min="0" max="100" step="1" value="33">
@@ -1917,8 +1917,8 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
 </section>
 
 <script defer src="https://cloud.umami.is/script.js" data-website-id="7949072b-501b-43b1-b400-323e6dbc53c4"></script>
-<script data-cfasync="false" src="js/mathml.js?v=20"></script>
-<script data-cfasync="false" src="js/utility.js?v=20"></script>
+<script data-cfasync="false" src="js/mathml.js?v=21"></script>
+<script data-cfasync="false" src="js/utility.js?v=21"></script>
 <!--
   Rich hover tooltip templates — Advanced Settings tiles. Each
   template is cloned into a shared floating div by App._initRichTips
@@ -1968,15 +1968,15 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
   <p>Plan I has no LLM channel, so the toggle is recorded in the snapshot but agent behavior is unchanged.</p>
 </template>
 
-<script data-cfasync="false" src="js/messaging.js?v=20"></script>
-<script data-cfasync="false" src="js/market.js?v=20"></script>
-<script data-cfasync="false" src="js/agents.js?v=20"></script>
-<script data-cfasync="false" src="js/logger.js?v=20"></script>
-<script data-cfasync="false" src="js/viz.js?v=20"></script>
-<script data-cfasync="false" src="js/ai.js?v=20"></script>
-<script data-cfasync="false" src="js/engine.js?v=20"></script>
-<script data-cfasync="false" src="js/ui.js?v=20"></script>
-<script data-cfasync="false" src="js/replay.js?v=20"></script>
-<script data-cfasync="false" src="js/main.js?v=20"></script>
+<script data-cfasync="false" src="js/messaging.js?v=21"></script>
+<script data-cfasync="false" src="js/market.js?v=21"></script>
+<script data-cfasync="false" src="js/agents.js?v=21"></script>
+<script data-cfasync="false" src="js/logger.js?v=21"></script>
+<script data-cfasync="false" src="js/viz.js?v=21"></script>
+<script data-cfasync="false" src="js/ai.js?v=21"></script>
+<script data-cfasync="false" src="js/engine.js?v=21"></script>
+<script data-cfasync="false" src="js/ui.js?v=21"></script>
+<script data-cfasync="false" src="js/replay.js?v=21"></script>
+<script data-cfasync="false" src="js/main.js?v=21"></script>
 </body>
 </html>
