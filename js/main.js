@@ -492,7 +492,7 @@ const App = {
       const _clampN = v => Math.max(6, Math.min(100, Number(v) | 0 || 100));
       advN.addEventListener('input', () => {
         const n = _clampN(advN.value);
-        if (advNout) advNout.textContent = String(n);
+        if (advNout) advNout.textContent = `${n} agents`;
         this._updateSliderPct(advN);
       });
       advN.addEventListener('change', () => {
@@ -856,7 +856,7 @@ const App = {
       this._updateSliderPct(advN);
     }
     const advNout = document.getElementById('v-adv-n-total');
-    if (advNout) advNout.textContent = String(n);
+    if (advNout) advNout.textContent = `${n} agents`;
 
     const tx = this._treatmentsFor(n);
     this.treatmentSize = tx.small;

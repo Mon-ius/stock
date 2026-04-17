@@ -1355,6 +1355,7 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .dlm-treatment-opt.scale-tile .param-head .pval {
   color: #fff;
   background: var(--teal);
+  min-width: 72px;
 }
 .dlm-treatment-opt.regulator-tile input[type=range].regulator-slider,
 .dlm-treatment-opt.scale-tile input[type=range].scale-slider {
