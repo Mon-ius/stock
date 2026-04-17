@@ -253,7 +253,7 @@
           <div class="param-row dlm-treatment-row" id="adv-session-rates-row">
             <div class="dlm-treatment-opt scale-tile scale-tile-amber" data-tip-id="advSessionRates">
               <div class="param-head">
-                <label>Session rates <span class="pval-sub">agents replaced per session</span></label>
+                <label>Session rates <span class="pval-sub">% of population replaced per session</span></label>
                 <span class="pval" id="v-adv-session-rates">—</span>
               </div>
               <div class="session-rate-grid" id="session-rate-grid"></div>
@@ -1938,9 +1938,9 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
   <p>Changing <span data-sym="bigR"></span> clamps the replacement-round slider to [2, <span data-sym="bigR"></span>] and resets the engine.</p>
 </template>
 <template id="tpl-advSessionRates">
-  <p>Per-session treatment sizes — one slider for each of the 10 sessions in the batch, each setting the number of agents replaced at the replacement-round boundary. Range is [0, <span data-sym="nAgents"></span>]: 0 disables replacement entirely for that session, <span data-sym="nAgents"></span> replaces everyone (a pure-cohort restart).</p>
-  <p>The default seed reproduces DLM 2005 at the symmetric split: sessions 1–5 get T-small and sessions 6–10 get T-big. From there you can dial in arbitrary schedules — e.g. a ramp (T0 → T10 → T20 → … → T90) to trace a dose-response curve across the 10-session batch, or hold one treatment fixed and perturb a single session to isolate its contribution to the composite bubble statistics.</p>
-  <p>Changing <span data-sym="nAgents"></span> rescales every slider's max to the new population and clamps existing values; changing a rate reseeds the engine so the new schedule takes effect on the next Start.</p>
+  <p>Per-session replacement rate — one slider for each of the 10 sessions in the batch, each setting the <em>fraction</em> of the population swapped at the replacement-round boundary. Range is [10%, 50%] in 1% steps; the engine projects the fraction through the current <span data-sym="nAgents"></span> to an integer agent count (e.g. 20% × <span data-sym="nAgents"></span> = 100 → T20).</p>
+  <p>The default seed reproduces DLM 2005's symmetric split at N = 100: sessions 1–5 run at 20% (↔ T20) and sessions 6–10 at 40% (↔ T40). From there you can dial in arbitrary schedules — a ramp (10% → 15% → 20% → … → 50%) to trace a dose-response curve across the batch, or hold one rate fixed and perturb a single session to isolate its contribution to the composite bubble statistics.</p>
+  <p>Because the rate is stored as a fraction (not an absolute count), the schedule is invariant under <span data-sym="nAgents"></span> changes — 20% means 20% at any population size. Changing a rate reseeds the engine so the new schedule takes effect on the next Start.</p>
 </template>
 <template id="tpl-advReplaceR">
   <p>Replacement round <span data-sym="smallR"></span> — the round boundary at which <code>treatmentSize</code> veterans are swapped for fresh agents (<code>roundsPlayed = 0</code>). DLM 2005 fixes <span data-sym="smallR"></span> = 4 so replacement happens at the end of round 3, giving newcomers three rounds of price history but none of their own experience.</p>
@@ -1977,6 +1977,6 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
 <script data-cfasync="false" src="js/engine.js?v=21"></script>
 <script data-cfasync="false" src="js/ui.js?v=21"></script>
 <script data-cfasync="false" src="js/replay.js?v=21"></script>
-<script data-cfasync="false" src="js/main.js?v=22"></script>
+<script data-cfasync="false" src="js/main.js?v=23"></script>
 </body>
 </html>

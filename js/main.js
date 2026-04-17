@@ -1046,33 +1046,44 @@ const App = {
     document.querySelectorAll('.tx-small-label').forEach(el => { el.textContent = tx.smallLabel; });
     document.querySelectorAll('.tx-big-label').forEach(el   => { el.textContent = tx.bigLabel;   });
 
-    // Reseed the per-session rate schedule to the new N's default
-    // (first 5 at T-small, last 5 at T-big) — N is a structural knob,
-    // and preserving a custom schedule from an old N rarely lines up
-    // with the new treatment sizes. Users can re-dial the per-session
-    // sliders afterward; _rebuildSessionRateGrid rebuilds the DOM
-    // with the new slider maxes.
-    this.sessionRates = null;
-    this._rebuildSessionRateGrid();
+    // Session rates are fractions in [0.10, 0.50] — invariant under N.
+    // No reseed needed, but the chip tints / label readouts depend on
+    // the percentage so we refresh the summary UI.
+    this._syncSessionMixUi();
     this.reset();
   },
 
   /**
-   * Ensure App.sessionRates is a populated 10-integer array for the
-   * current TOTAL_N. Called from init and from setTotalN so the array
-   * survives a population rescale; values get clamped to [0, TOTAL_N]
-   * on N-shrink, and a fresh default (5 × T-small + 5 × T-big) seeds
-   * the array the first time this runs.
+   * Ensure App.sessionRates is a populated 10-float array of replacement
+   * fractions in [SESSION_RATE_MIN, SESSION_RATE_MAX]. Storing the
+   * fraction (not an absolute agent count) makes the schedule invariant
+   * under N changes — 20% replacement means 20% whether the population
+   * is 6 or 100. The first-time default reproduces DLM 2005's symmetric
+   * split at N = 100 (5 × T20 + 5 × T40 ↔ 5 × 0.20 + 5 × 0.40).
    */
+  SESSION_RATE_MIN:  0.10,
+  SESSION_RATE_MAX:  0.50,
+  SESSION_RATE_STEP: 0.01,
   _ensureSessionRates() {
-    const tx = this._treatmentsFor(this.TOTAL_N);
     if (!Array.isArray(this.sessionRates) || this.sessionRates.length !== 10) {
-      this.sessionRates = new Array(10).fill(0).map((_, i) => i < 5 ? tx.small : tx.big);
+      this.sessionRates = new Array(10).fill(0).map((_, i) => i < 5 ? 0.20 : 0.40);
       return;
     }
+    const lo = this.SESSION_RATE_MIN, hi = this.SESSION_RATE_MAX;
     for (let i = 0; i < 10; i++) {
-      this.sessionRates[i] = Math.max(0, Math.min(this.TOTAL_N, this.sessionRates[i] | 0));
+      const v = Number(this.sessionRates[i]);
+      this.sessionRates[i] = Math.max(lo, Math.min(hi,
+        Number.isFinite(v) ? Math.round(v * 100) / 100 : 0.20,
+      ));
     }
+  },
+
+  /** Convert a session-rate fraction + current N into an integer
+   *  treatmentSize (number of agents replaced at the r-1 → r boundary).
+   *  Centralised so start() and the export metadata agree on rounding. */
+  _rateToTreatment(rate) {
+    const N = this.TOTAL_N || 0;
+    return Math.max(0, Math.min(N, Math.round(Number(rate) * N)));
   },
 
   /**
@@ -1087,7 +1098,10 @@ const App = {
     const grid = document.getElementById('session-rate-grid');
     if (!grid) return;
     this._ensureSessionRates();
-    const N = this.TOTAL_N;
+    const lo = this.SESSION_RATE_MIN;
+    const hi = this.SESSION_RATE_MAX;
+    const step = this.SESSION_RATE_STEP;
+    const fmt = (rate) => `${Math.round(rate * 100)}%`;
     grid.innerHTML = '';
     for (let s = 0; s < 10; s++) {
       const row = document.createElement('div');
@@ -1100,19 +1114,22 @@ const App = {
       const sl = document.createElement('input');
       sl.type = 'range';
       sl.className = 'session-rate-slider';
-      sl.min = '0';
-      sl.max = String(N);
-      sl.step = '1';
+      sl.min = String(lo);
+      sl.max = String(hi);
+      sl.step = String(step);
       sl.value = String(this.sessionRates[s]);
       sl.dataset.session = String(s);
 
       const val = document.createElement('span');
       val.className = 'session-rate-val';
-      val.textContent = `T${this.sessionRates[s]}`;
+      val.textContent = fmt(this.sessionRates[s]);
 
       sl.addEventListener('input', () => {
-        const v = Math.max(0, Math.min(N, Number(sl.value) | 0));
-        val.textContent = `T${v}`;
+        const raw = Number(sl.value);
+        const v = Math.max(lo, Math.min(hi,
+          Number.isFinite(raw) ? Math.round(raw * 100) / 100 : lo,
+        ));
+        val.textContent = fmt(v);
         this.sessionRates[s] = v;
         this._updateSliderPct(sl);
         this._syncSessionMixUi();
@@ -1138,24 +1155,27 @@ const App = {
    */
   _syncSessionMixUi() {
     this._ensureSessionRates();
-    const N = this.TOTAL_N || 1;
+    const hi = this.SESSION_RATE_MAX || 0.5;
     const summary = document.getElementById('session-mix-summary');
+    const fmtPct = (rate) => `${Math.round(rate * 100)}%`;
     if (summary) {
       summary.innerHTML = '';
       for (let s = 0; s < 10; s++) {
-        const v = this.sessionRates[s] | 0;
+        const rate = this.sessionRates[s];
         const chip = document.createElement('span');
         chip.className = 'session-chip';
-        chip.dataset.rate = String(v);
-        chip.style.setProperty('--intensity', String(v / N));
-        chip.innerHTML = `<span class="session-chip-idx">S${s + 1}</span><span class="session-chip-val">T${v}</span>`;
+        chip.dataset.rate = String(rate);
+        // Intensity is the fraction of the slider's active band, so a
+        // chip at 10% is faint and a chip at 50% is saturated amber.
+        chip.style.setProperty('--intensity', String(Math.max(0, Math.min(1, rate / hi))));
+        chip.innerHTML = `<span class="session-chip-idx">S${s + 1}</span><span class="session-chip-val">${fmtPct(rate)}</span>`;
         summary.appendChild(chip);
       }
     }
     const advOut = document.getElementById('v-adv-session-rates');
     if (advOut) {
       const mean = this.sessionRates.reduce((a, b) => a + b, 0) / 10;
-      advOut.textContent = `mean T${Math.round(mean)}`;
+      advOut.textContent = `mean ${fmtPct(mean)}`;
     }
   },
 
@@ -1458,13 +1478,15 @@ const App = {
       if (s >= SESSIONS) {
         this._batchRunning = false;
         this.currentSession = 0;
-        this.treatmentSize = rates[0] | 0;
+        this.treatmentSize = this._rateToTreatment(rates[0]);
         console.table(this.batchResults);
         if (btnExport) btnExport.disabled = false;
         this.requestRender();
         return;
       }
-      const treatment = rates[s] | 0;
+      // Rates are fractions in [0.1, 0.5]; the engine consumes an
+      // integer agent count, so we project through the current N.
+      const treatment = this._rateToTreatment(rates[s]);
       this.treatmentSize = treatment;
       this.currentSession = s + 1;
       this.reset();
@@ -1568,7 +1590,10 @@ const App = {
 
     return {
       session:    sessionNum,
-      treatment:  (() => { const tx = this._treatmentsFor(this.TOTAL_N); return this.treatmentSize === tx.small ? tx.smallLabel : tx.bigLabel; })(),
+      treatment:  `T${this.treatmentSize}`,
+      treatmentPct: this.TOTAL_N > 0
+        ? Math.round((this.treatmentSize / this.TOTAL_N) * 1000) / 10
+        : 0,
       plan:       this.plan,
       seed:       this.seed,
       agentSpecs: (this._sessionOriginalSpecs || this.agentSpecs).map(s => ({ ...s })),

@@ -1294,7 +1294,8 @@ body:not(.plan-iii) .plan-iii-only { display: none !important; }
   font-weight: 600;
   color: var(--fg-0);
 }
-.session-chip[data-rate="0"] .session-chip-val { color: var(--fg-3); font-weight: 400; }
+/* Session rates are fractions in [0.10, 0.50] — no "disabled" chip
+   state any more; the faintest intensity is 10% × slider range. */
 .dlm-treatment-opt {
   flex: 1;
   display: flex;
