@@ -228,12 +228,15 @@ class Engine {
           const a = this.agents[id];
           a.roundsPlayed = (a.roundsPlayed || 0) + 1;
         }
-        // Round-3 → round-4 transition: the treatment-controlled
-        // replacement step fires BEFORE the round-4 reset rewinds
-        // endowments, so the new fresh agents take their replacement
-        // endowments and the surviving veterans start round 4 from
-        // their original spec.
-        if (m.round === 3) {
+        // Replacement transition: the treatment-controlled replacement
+        // step fires BEFORE the next round's reset rewinds endowments,
+        // so the new fresh agents take their replacement endowments and
+        // the surviving veterans start the replacement round from their
+        // original spec. DLM 2005 fixes the boundary at round 3 → 4
+        // (replacementRound = 4); Advanced settings exposes it as a
+        // slider so replacement can happen at any r ∈ [2, R].
+        const replaceR = (this.ctx && this.ctx.replacementRound) | 0 || 4;
+        if (m.round === replaceR - 1) {
           this._round4Replacement();
         }
         this._resetRound();

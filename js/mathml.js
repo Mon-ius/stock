@@ -173,6 +173,8 @@ const Sym = {
   bigT:      _wrap(_mi('T')),                                                 // T
   bigQ:      _wrap(_mi('Q')),                                                 // Q
   nAgents:   _wrap(_mi('N')),                                                 // N
+  bigR:      _wrap(_mi('R')),                                                 // R
+  smallR:    _wrap(_mi('r')),                                                 // r
   volT:      _wrap(_sub(_mi('V'), _mi('t'))),                                 // V_t
 
   /* Utility functionals — compact form used by slider labels and the

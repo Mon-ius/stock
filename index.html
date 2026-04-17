@@ -241,6 +241,22 @@
               <input type="range" id="p-adv-n-total" class="scale-slider" min="6" max="100" step="1" value="100">
             </div>
           </div>
+          <div class="param-row dlm-treatment-row" id="adv-rounds-row">
+            <div class="dlm-treatment-opt scale-tile" data-tip-id="advRoundsR">
+              <div class="param-head">
+                <label for="p-adv-rounds">Rounds per session <span data-sym="bigR"></span></label>
+                <span class="pval" id="v-adv-rounds">4 rounds</span>
+              </div>
+              <input type="range" id="p-adv-rounds" class="scale-slider" min="2" max="10" step="1" value="4">
+            </div>
+            <div class="dlm-treatment-opt scale-tile" data-tip-id="advReplaceR">
+              <div class="param-head">
+                <label for="p-adv-replace-round">Replacement round <span data-sym="smallR"></span></label>
+                <span class="pval" id="v-adv-replace-round">r = 4</span>
+              </div>
+              <input type="range" id="p-adv-replace-round" class="scale-slider" min="2" max="4" step="1" value="4">
+            </div>
+          </div>
           <div class="param-row dlm-treatment-row">
             <label class="dlm-treatment-opt" data-tip-id="advBias">
               <span>Prior Bias</span>
@@ -296,9 +312,9 @@
               <dd class="const-note" id="const-n-note">DLM 2005 &sect;I pins the original design at six subjects &mdash; &ldquo;At each session, six subjects participated in a sequence of four consecutive markets for an experimental asset.&rdquo; This simulator scales the population to N = 100 for a thicker order book while preserving the four-round session structure.<span class="const-src">§I, p. 1733 &middot; scaled in main.js · switch in Advanced settings</span></dd>
             </div>
             <div class="const-item">
-              <dt>rounds / session <span class="const-val">= 4</span></dt>
+              <dt>rounds / session <span class="const-val" id="const-rounds-total">= 4</span></dt>
               <dd class="const-label">Consecutive markets played by the same subjects</dd>
-              <dd class="const-note">&ldquo;A session involved four consecutive markets. In the following, we shall talk in terms of four different rounds. Note the distinction between rounds and periods; a round (being a market) consists of ten periods.&rdquo;<span class="const-src">§I, p. 1733</span></dd>
+              <dd class="const-note" id="const-rounds-note">&ldquo;A session involved four consecutive markets. In the following, we shall talk in terms of four different rounds. Note the distinction between rounds and periods; a round (being a market) consists of ten periods.&rdquo;<span class="const-src">§I, p. 1733 &middot; slider in Advanced settings</span></dd>
             </div>
             <div class="const-item">
               <dt><span data-sym="bigT"></span> <span class="const-val">= 10</span></dt>
@@ -1912,6 +1928,17 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
   <p>Population size <span data-sym="nAgents"></span> — the number of UtilityAgents in each session. Drag between <strong>6</strong> (paper-faithful DLM 2005 thin-book regime) and <strong>100</strong> (simulator-scaled thick-book regime).</p>
   <p>Round-4 treatment sizes scale with <span data-sym="nAgents"></span>: at <span data-sym="nAgents"></span> = 6 the paper's T2 / T4 (replace 2 or 4 of 6), at <span data-sym="nAgents"></span> = 100 the simulator's T20 / T40, linearly interpolated in between. The treatment labels update as you slide.</p>
   <p>Changing <span data-sym="nAgents"></span> redraws every agent and resets the engine seed. Mix sliders rescale to keep <code>U = N − F − T</code>.</p>
+</template>
+<template id="tpl-advRoundsR">
+  <p>Rounds per session <span data-sym="bigR"></span> — how many consecutive <span data-sym="bigT"></span>-period markets the same population plays before a new session begins.</p>
+  <p>DLM 2005 pins <span data-sym="bigR"></span> = 4 (the paper default). The 10-session batch runner still runs 10 sessions regardless, so raising <span data-sym="bigR"></span> lengthens every session to <span data-sym="bigR"></span> · <span data-sym="bigT"></span> · K ticks while holding the number of sessions fixed.</p>
+  <p>Cross-round learning (<code>roundsPlayed</code>, trust, belief mode) persists within a session and resets between sessions, so <span data-sym="bigR"></span> controls how much experience each cohort accumulates before the batch moves on.</p>
+  <p>Changing <span data-sym="bigR"></span> clamps the replacement-round slider to [2, <span data-sym="bigR"></span>] and resets the engine.</p>
+</template>
+<template id="tpl-advReplaceR">
+  <p>Replacement round <span data-sym="smallR"></span> — the round boundary at which <code>treatmentSize</code> veterans are swapped for fresh agents (<code>roundsPlayed = 0</code>). DLM 2005 fixes <span data-sym="smallR"></span> = 4 so replacement happens at the end of round 3, giving newcomers three rounds of price history but none of their own experience.</p>
+  <p>The slider lets you pick any round in [2, <span data-sym="bigR"></span>]. <span data-sym="smallR"></span> = 2 splices newcomers in after a single round of price history (minimal experience gap); <span data-sym="smallR"></span> = <span data-sym="bigR"></span> is the paper-faithful "last round" replacement.</p>
+  <p>Survivors keep their cash trajectory, trust matrix, and belief mode across the boundary; fresh agents arrive with a clean <code>roundsPlayed</code> counter and the treatment endowment from the original spec.</p>
 </template>
 <template id="tpl-advBias">
   <p>When ON each UtilityAgent's prior becomes <span data-sym="priorBias"></span>.</p>

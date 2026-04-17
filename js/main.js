@@ -125,6 +125,14 @@ const App = {
   // 40 = T40 (R4-⅓, 40 fresh, 60 veterans remain).
   treatmentSize: 20,
 
+  // Round at which the treatment replacement fires: the engine swaps
+  // `treatmentSize` veterans for fresh agents at the end of round
+  // (replacementRound − 1), so replacementRound = 4 reproduces the DLM
+  // 2005 paper schedule (fresh agents arrive for round 4). Exposed as
+  // a slider in Advanced settings with range [2, roundsPerSession];
+  // clamped automatically when the user shrinks R below the current r.
+  replacementRound: 4,
+
   // Session counter for the 10-session batch. 0 = idle/pre-run,
   // 1-10 during a batch. Updated by start() at every session
   // boundary and reset to 0 by reset() or when the batch completes.
@@ -501,9 +509,62 @@ const App = {
       });
     }
 
+    // Advanced settings — rounds per session (R) slider (2 … 10). Drives
+    // config.roundsPerSession and clamps the replacement-round slider's
+    // upper bound + value so r ≤ R always holds.
+    const advR   = document.getElementById('p-adv-rounds');
+    const advRout = document.getElementById('v-adv-rounds');
+    const advRep = document.getElementById('p-adv-replace-round');
+    const advRepOut = document.getElementById('v-adv-replace-round');
+    if (advR) {
+      const _clampR = v => Math.max(2, Math.min(10, Number(v) | 0 || 4));
+      advR.addEventListener('input', () => {
+        const R = _clampR(advR.value);
+        if (advRout) advRout.textContent = `${R} rounds`;
+        this._updateSliderPct(advR);
+        if (advRep) {
+          advRep.max = String(R);
+          if ((Number(advRep.value) | 0) > R) {
+            advRep.value = String(R);
+            if (advRepOut) advRepOut.textContent = `r = ${R}`;
+            this._updateSliderPct(advRep);
+          }
+        }
+      });
+      advR.addEventListener('change', () => {
+        const R = _clampR(advR.value);
+        this.config.roundsPerSession = R;
+        if (this.replacementRound > R) this.replacementRound = R;
+        if (this.replacementRound < 2) this.replacementRound = 2;
+        this._syncRoundsUi();
+        this.reset();
+      });
+    }
+
+    if (advRep) {
+      const _clampRep = v => {
+        const R = (this.config && this.config.roundsPerSession) || 4;
+        return Math.max(2, Math.min(R, Number(v) | 0 || R));
+      };
+      advRep.addEventListener('input', () => {
+        const r = _clampRep(advRep.value);
+        if (advRepOut) advRepOut.textContent = `r = ${r}`;
+        this._updateSliderPct(advRep);
+      });
+      advRep.addEventListener('change', () => {
+        const r = _clampRep(advRep.value);
+        this.replacementRound = r;
+        this._syncRoundsUi();
+        this.reset();
+      });
+    }
+
     // Prime the custom --pct on every slider so the filled portion of
     // the track matches the initial value before any interaction.
     this._updateAllSliderPcts();
+    // Keep the paper-constants round card synced with the current
+    // (R, r) pair in case defaults differ from the static HTML.
+    this._syncRoundsUi();
 
     // Foldable panel header — click anywhere on the strip to toggle
     // the body visibility. Mirrors the pattern used by the lying
@@ -827,6 +888,44 @@ const App = {
   },
 
   /**
+   * Keep the paper-constants round card and the replacement-round
+   * slider's upper bound aligned with the current (R, r) pair. The
+   * card's DLM 2005 quote is preserved; a short "currently running
+   * at R = X" sentence is appended when R differs from the paper's 4.
+   */
+  _syncRoundsUi() {
+    const R = (this.config && this.config.roundsPerSession) || 4;
+    const r = this.replacementRound || 4;
+    const constR = document.getElementById('const-rounds-total');
+    if (constR) constR.textContent = `= ${R}`;
+    const constNote = document.getElementById('const-rounds-note');
+    if (constNote) {
+      const paperQuote = '&ldquo;A session involved four consecutive markets. In the following, we shall talk in terms of four different rounds. Note the distinction between rounds and periods; a round (being a market) consists of ten periods.&rdquo;';
+      const src = '<span class="const-src">§I, p. 1733 &middot; slider in Advanced settings</span>';
+      constNote.innerHTML = (R === 4 && r === 4)
+        ? `${paperQuote}${src}`
+        : `${paperQuote} Currently running R = ${R} round${R === 1 ? '' : 's'} per session with replacement at the end of round ${r - 1} (fresh agents arrive for round ${r}).${src}`;
+    }
+    const advR = document.getElementById('p-adv-rounds');
+    if (advR && Number(advR.value) !== R) {
+      advR.value = String(R);
+      this._updateSliderPct(advR);
+      const advRout = document.getElementById('v-adv-rounds');
+      if (advRout) advRout.textContent = `${R} rounds`;
+    }
+    const advRep = document.getElementById('p-adv-replace-round');
+    if (advRep) {
+      advRep.max = String(R);
+      if (Number(advRep.value) !== r) {
+        advRep.value = String(r);
+        this._updateSliderPct(advRep);
+        const advRepOut = document.getElementById('v-adv-replace-round');
+        if (advRepOut) advRepOut.textContent = `r = ${r}`;
+      }
+    }
+  },
+
+  /**
    * Switch the simulator population size. Rewrites every dependent
    * tunable in lockstep so no downstream caller is left holding a
    * stale N-derived value: mix shares, the F/T slider maxes and
@@ -1126,6 +1225,10 @@ const App = {
       llmActions:    {},
       // Round-4 replacement: 20 (T20/R4-⅔) or 40 (T40/R4-⅓).
       treatmentSize: this.treatmentSize,
+      // Round at which replacement fires (end of replacementRound − 1).
+      // Defaults to 4 (DLM paper schedule); user-adjustable in Advanced
+      // settings. Clamped to [2, roundsPerSession] at wiring time.
+      replacementRound: this.replacementRound,
       // Current session number (1-10) for the batch display.
       currentSession: this.currentSession,
     };
@@ -1271,13 +1374,14 @@ const App = {
     // Per-round breakdown — metrics + replacement info + final cash.
     const rounds = [];
     const replEvt = this.logger.events.find(e => e.type === 'round_4_replacement');
+    const replaceR = this.replacementRound || 4;
     for (let r = 1; r <= R; r++) {
       const label = `R${r}_S${sessionNum}`;
       rounds.push({
         round: r,
         label,
         metrics:        this.batchResults.find(b => b.label === label) || null,
-        replacement:    r === 4 && replEvt
+        replacement:    r === replaceR && replEvt
           ? { treatmentSize: replEvt.treatmentSize, replaced: replEvt.replaced }
           : null,
         roundFinalCash: this.logger.roundFinalCash[r - 1] || null,
