@@ -232,12 +232,12 @@
       <details class="psec const-sim" id="psec-advanced" open>
         <summary>Advanced settings <span class="const-cite">population scale · treatment labels</span></summary>
         <div class="psec-body">
-          <div class="param-row dlm-treatment-row" id="adv-n-total-row" data-tip="Switch the simulator population size N. N = 100 is the scaled regime (thick order book, T20/T40 round-4 treatments). N = 6 reverts to the original DLM 2005 six-subject market with the paper-faithful T2/T4 round-4 treatments. Changing this redraws every agent and resets the seed.">
-            <label class="dlm-treatment-opt">
+          <div class="param-row dlm-treatment-row" id="adv-n-total-row">
+            <label class="dlm-treatment-opt" data-tip="Scaled regime (N = 100). 100 UtilityAgent slots split evenly across the two DLM endowment types, with round-4 treatments labelled T20 (20 fresh replacements, 80 veterans) and T40 (40 fresh, 60 veterans). The thicker order book smooths price discovery and gives the LLM channel in Plan II/III enough counterparties to trade against every period. Default for this simulator; selecting redraws every agent and resets the seed.">
               <input type="radio" name="adv-n-total" value="100" checked>
               <span><strong>N = 100</strong> · scaled</span>
             </label>
-            <label class="dlm-treatment-opt">
+            <label class="dlm-treatment-opt" data-tip="Original Dufwenberg–Lindqvist–Moore (2005) six-subject design. 3 type-A + 3 type-B UtilityAgents with the paper-faithful round-4 treatments T2 (2 fresh replacements, 4 veterans) and T4 (4 fresh, 2 veterans) — the R4-⅔ / R4-⅓ labels from DLM §I. Thin order book reproduces the published bubble dynamics exactly; the LLM channel can starve of counterparties. Selecting redraws every agent and resets the seed.">
               <input type="radio" name="adv-n-total" value="6">
               <span><strong>N = 6</strong> · DLM 2005</span>
             </label>
