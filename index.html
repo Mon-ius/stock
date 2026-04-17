@@ -235,22 +235,22 @@
           <div class="param-row dlm-treatment-row" id="adv-n-total-row">
             <label class="dlm-treatment-opt" data-tip="Scaled regime (N = 100). 100 UtilityAgent slots split evenly across the two DLM endowment types, with round-4 treatments labelled T20 (20 fresh replacements, 80 veterans) and T40 (40 fresh, 60 veterans). The thicker order book smooths price discovery and gives the LLM channel in Plan II/III enough counterparties to trade against every period. Default for this simulator; selecting redraws every agent and resets the seed.">
               <input type="radio" name="adv-n-total" value="100" checked>
-              <span><strong>N = 100</strong> · scaled</span>
+              <span><strong>100 Agents (N = 100)</strong> · scaled</span>
             </label>
             <label class="dlm-treatment-opt" data-tip="Original Dufwenberg–Lindqvist–Moore (2005) six-subject design. 3 type-A + 3 type-B UtilityAgents with the paper-faithful round-4 treatments T2 (2 fresh replacements, 4 veterans) and T4 (4 fresh, 2 veterans) — the R4-⅔ / R4-⅓ labels from DLM §I. Thin order book reproduces the published bubble dynamics exactly; the LLM channel can starve of counterparties. Selecting redraws every agent and resets the seed.">
               <input type="radio" name="adv-n-total" value="6">
-              <span><strong>N = 6</strong> · DLM 2005</span>
+              <span><strong>6 Agents (N = 6)</strong> · DLM 2005</span>
             </label>
           </div>
           <div class="param-row dlm-treatment-row">
-            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior becomes FV_t · (1 + δᵢ · β). δᵢ ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic) and β defaults to 0.15. The tilt bᵢ = δᵢ · β is persistent — optimistic agents systematically overpay, pessimistic agents under-bid — creating directional mispricing that survives across rounds. When OFF bᵢ is zeroed and every agent starts from the true FV.">
+            <label class="dlm-treatment-opt" data-tip-id="advBias">
               <span>Prior Bias</span>
               <label class="slide-toggle" for="p-applyBias">
                 <input type="checkbox" id="p-applyBias" checked>
                 <span class="slide-track"><span class="slide-thumb"></span></span>
               </label>
             </label>
-            <label class="dlm-treatment-opt" data-tip="When ON each UtilityAgent's prior gains i.i.d. per-tick jitter: FV_t · (1 + ε) where ε ~ U[−n, +n], n = 0.03 (±3%). This models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on FV but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion. When OFF the noise term is zeroed and the prior is deterministic each tick.">
+            <label class="dlm-treatment-opt" data-tip-id="advNoise">
               <span>Prior Noise</span>
               <label class="slide-toggle" for="p-applyNoise">
                 <input type="checkbox" id="p-applyNoise" checked>
@@ -259,7 +259,7 @@
             </label>
           </div>
           <div class="param-row dlm-treatment-row">
-            <label class="dlm-treatment-opt" data-tip="When ON the per-period dividend is drawn from a non-trivial 5-point distribution {0, 4, 10, 20, 40}¢ with probabilities {0.30, 0.25, 0.20, 0.15, 0.10}. The expected dividend is still μ_d = 10¢ (so the true FV_t = 10·(T−t+1) is unchanged) — but a real person cannot read that mean off the distribution at a glance. Each UtilityAgent therefore computes its prior from its own empirical mean of observed dividends plus a computational-noise term ξ ~ U[−σ_n, +σ_n] with σ_n = 0.35/√(n+1), so a novice with zero draws is off by up to ±35% and a veteran with many draws converges to the truth. Replaced agents in round 4 start with an empty history (roundsPlayed=0) and therefore enter the market with the naive prior. When OFF the dividend is the paper's {0, 20}¢ coin flip and every agent's prior uses the exact FV.">
+            <label class="dlm-treatment-opt" data-tip-id="advComplex">
               <span>Complex Dividends</span>
               <label class="slide-toggle" for="p-applyComplexDividends">
                 <input type="checkbox" id="p-applyComplexDividends">
@@ -268,7 +268,7 @@
             </label>
           </div>
           <div class="param-row dlm-treatment-row plan-llm-only">
-            <div class="dlm-treatment-opt regulator-tile" data-tip="Regulator (Plan II / III only). The slider value θ is the bubble-ratio threshold |P_t − FV_t| / FV_t at which the regulator fires its one-shot warning. When θ = 0 the regulator is disabled. When θ > 0 the engine monitors the bubble ratio at every period boundary and the first time it crosses θ within a round it injects a REGULATOR WARNING into every Utility agent's LLM prompt for the rest of that round (cleared at the next round_start). Plan I has no LLM channel and ignores the warning.">
+            <div class="dlm-treatment-opt regulator-tile" data-tip-id="advRegulator">
               <div class="param-head">
                 <label for="p-regulator-threshold">Regulator <span data-sym="bubbleRatio"></span></label>
                 <span class="pval" id="v-regulator-threshold">off</span>
@@ -1902,6 +1902,34 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
 <script defer src="https://cloud.umami.is/script.js" data-website-id="7949072b-501b-43b1-b400-323e6dbc53c4"></script>
 <script data-cfasync="false" src="js/mathml.js?v=20"></script>
 <script data-cfasync="false" src="js/utility.js?v=20"></script>
+<!--
+  Rich hover tooltip templates — Advanced Settings tiles. Each
+  template is cloned into a shared floating div by App._initRichTips
+  on hover/focus. The <span data-sym="..."> placeholders are
+  hydrated by mathml.js's hydrateSymbols so every math expression
+  renders through the same Sym registry as the Architecture tab.
+-->
+<template id="tpl-advBias">
+  <p>When ON each UtilityAgent's prior becomes <span data-sym="priorBias"></span>.</p>
+  <p><span data-sym="deltaI"></span> ∈ {−1, 0, +1} is drawn at birth (pessimistic / unbiased / optimistic); <span data-sym="beta"></span> = 0.15. The tilt <span data-sym="biasI"></span> = <span data-sym="deltaI"></span>·<span data-sym="beta"></span> is persistent — optimistic agents systematically overpay, pessimistic agents under-bid, creating directional mispricing that survives across rounds.</p>
+  <p>When OFF <span data-sym="biasI"></span> is zeroed and every agent starts from the true <span data-sym="fv"></span>.</p>
+</template>
+<template id="tpl-advNoise">
+  <p>When ON each UtilityAgent's prior gains i.i.d. per-tick jitter <span data-sym="priorNoise"></span> with <span data-sym="noiseRange"></span>, <code>n = 0.03</code> (±3%).</p>
+  <p>Models moment-to-moment uncertainty in the agent's private signal. Noise alone centres on <span data-sym="fv"></span> but widens the bid–ask spread; combined with bias it amplifies mispricing dispersion.</p>
+  <p>When OFF the noise term is zeroed and the prior is deterministic each tick.</p>
+</template>
+<template id="tpl-advComplex">
+  <p>When ON the per-period dividend is drawn from a 5-point distribution <span data-sym="divSupportC"></span> with <span data-sym="divProbsC"></span>. The expected dividend is still <span data-sym="muD"></span> = 10¢ (so <span data-sym="fvDef"></span> is unchanged) — but a real person cannot read that mean off the table at a glance.</p>
+  <p>Each UtilityAgent therefore forms <span data-sym="fvHatDef"></span> from <span data-sym="muHatDef"></span> over its own <span data-sym="nSamples"></span> observed dividends, with computational noise <span data-sym="sigmaNDef"></span>. A novice (<span data-sym="nSamples"></span> = 0) is off by up to ±35%; a veteran converges to the truth.</p>
+  <p>Round-4 replacements (<code>roundsPlayed = 0</code>) start with an empty sample and re-enter with the naive prior. When OFF the dividend is the paper's {0, 20}¢ coin flip and every agent's prior uses the exact <span data-sym="fv"></span>.</p>
+</template>
+<template id="tpl-advRegulator">
+  <p>Regulator (Plan II / III only). The slider value <span data-sym="theta"></span> is the bubble-ratio threshold <span data-sym="bubbleRatioRaw"></span> at which the regulator fires its one-shot warning. <span data-sym="theta"></span> = 0 disables it.</p>
+  <p>When <span data-sym="theta"></span> &gt; 0 the engine monitors the ratio at every period boundary; the first time it crosses <span data-sym="theta"></span> within a round it injects a <code>REGULATOR WARNING</code> block into every Utility agent's LLM prompt for the rest of that round (cleared at the next <code>round_start</code>).</p>
+  <p>Plan I has no LLM channel, so the toggle is recorded in the snapshot but agent behavior is unchanged.</p>
+</template>
+
 <script data-cfasync="false" src="js/messaging.js?v=20"></script>
 <script data-cfasync="false" src="js/market.js?v=20"></script>
 <script data-cfasync="false" src="js/agents.js?v=20"></script>

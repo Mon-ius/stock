@@ -111,6 +111,64 @@ const Sym = {
     _mi('θ'),
   )),
   theta:     _wrap(_mi('θ')),                                                 // θ
+
+  /* Advanced-settings building blocks — rendered in the rich hover
+     tooltips so the math in the tile popups uses the same MathML path
+     as the Architecture tab and the agent cards. */
+  deltaI:    _wrap(_sub(_mi('δ'), _mi('i'))),                                 // δ_i
+  beta:      _wrap(_mi('β')),                                                 // β
+  biasI:     _wrap(_sub(_mi('b'), _mi('i'))),                                 // b_i
+  epsilon:   _wrap(_mi('ε')),                                                 // ε
+  xi:        _wrap(_mi('ξ')),                                                 // ξ
+  nSamples:  _wrap(_sub(_mi('n'), _mi('i'))),                                 // n_i
+  sigmaN:    _wrap(_sub(_mi('σ'), _mi('n'))),                                 // σ_n
+  xBarN:     _wrap(_sub(_bar(_mi('x')), _row(_mi('n'), _mi('i')))),           // x̄_{n_i}
+  muHatI:    _wrap(_sub(_hat(_mi('μ')), _mi('i'))),                           // μ̂_i
+  fvHatIt:   _wrap(_sub(_hat(_row(_mi('F'), _mi('V'))), _it)),                // FV̂_{i,t}
+  priorBias: _wrap(_row(                                                      // FV_t · (1 + δ_i · β)
+    _sub(_row(_mi('F'), _mi('V')), _mi('t')), _mo('·'),
+    _mo('('), _mn('1'), _mo('+'),
+    _sub(_mi('δ'), _mi('i')), _mo('·'), _mi('β'),
+    _mo(')'),
+  )),
+  priorNoise: _wrap(_row(                                                     // FV_t · (1 + ε)
+    _sub(_row(_mi('F'), _mi('V')), _mi('t')), _mo('·'),
+    _mo('('), _mn('1'), _mo('+'), _mi('ε'), _mo(')'),
+  )),
+  noiseRange: _wrap(_row(                                                     // ε ~ U[−n, +n]
+    _mi('ε'), _mo('∼'), _mi('U'),
+    _mo('['), _mo('−'), _mi('n'), _mo(','), _mo('+'), _mi('n'), _mo(']'),
+  )),
+  sigmaNDef: _wrap(_row(                                                      // σ_n = 0.35/√(n+1)
+    _sub(_mi('σ'), _mi('n')), _mo('='),
+    _frac(_mn('0.35'), _sqrt(_row(_mi('n'), _mo('+'), _mn('1')))),
+  )),
+  muHatDef:  _wrap(_row(                                                      // μ̂_i = x̄_{n_i} · (1 + ξ)
+    _sub(_hat(_mi('μ')), _mi('i')), _mo('='),
+    _sub(_bar(_mi('x')), _row(_mi('n'), _mi('i'))),
+    _mo('·'), _mo('('), _mn('1'), _mo('+'), _mi('ξ'), _mo(')'),
+  )),
+  fvHatDef:  _wrap(_row(                                                      // FV̂_t = μ̂_i · (T − t + 1)
+    _sub(_hat(_row(_mi('F'), _mi('V'))), _mi('t')), _mo('='),
+    _sub(_hat(_mi('μ')), _mi('i')), _mo('·'),
+    _mo('('), _mi('T'), _mo('−'), _mi('t'), _mo('+'), _mn('1'), _mo(')'),
+  )),
+  divSupportC: _wrap(_row(                                                    // d ∈ {0, 4, 10, 20, 40}¢
+    _mi('d'), _mo('∈'), _mo('{'),
+    _mn('0'), _mo(','), _mn('4'), _mo(','), _mn('10'), _mo(','),
+    _mn('20'), _mo(','), _mn('40'),
+    _mo('}'), _mi('¢'),
+  )),
+  divProbsC: _wrap(_row(                                                      // p = {0.30, 0.25, 0.20, 0.15, 0.10}
+    _mi('p'), _mo('='), _mo('{'),
+    _mn('0.30'), _mo(','), _mn('0.25'), _mo(','), _mn('0.20'), _mo(','),
+    _mn('0.15'), _mo(','), _mn('0.10'),
+    _mo('}'),
+  )),
+  bubbleRatioRaw: _wrap(_frac(                                                // |P_t − FV_t| / FV_t
+    _abs(_row(_sub(_mi('P'), _mi('t')), _mo('−'), _sub(_row(_mi('F'), _mi('V')), _mi('t')))),
+    _sub(_row(_mi('F'), _mi('V')), _mi('t')),
+  )),
   muD:       _wrap(_sub(_mi('μ'), _mi('d'))),                                 // μ_d
   bigT:      _wrap(_mi('T')),                                                 // T
   bigQ:      _wrap(_mi('Q')),                                                 // Q

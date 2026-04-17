@@ -189,7 +189,99 @@ const App = {
     // visibility is correct before _wireControls attaches handlers.
     document.body.classList.add('plan-' + this.plan.toLowerCase());
     this._wireControls();
+    this._initRichTips();
     this.reset();
+  },
+
+  /* ----- Rich hover tooltips ---------------------------------------
+     A single floating <div class="rich-tip"> is appended to the body
+     once, then populated from a <template id="tpl-<key>"> matching
+     the hovered element's data-tip-id. Native MathML inside the
+     template renders through the browser's math engine, so the
+     formulas in the Advanced settings popups use the same rendering
+     path as the Architecture tab — no plain-text Unicode math, no
+     drift from the app's canonical look. Hydration runs on the
+     cloned subtree so any <span data-sym="..."> placeholders in the
+     template get filled from the shared Sym map. */
+  _initRichTips() {
+    if (this._richTip) return;
+    const tip = document.createElement('div');
+    tip.className = 'rich-tip';
+    tip.setAttribute('role', 'tooltip');
+    tip.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(tip);
+    this._richTip = tip;
+    let current = null;
+    const hydrate = (typeof window !== 'undefined' && window.hydrateSymbols) || null;
+
+    const position = (target) => {
+      const rect = target.getBoundingClientRect();
+      const tipRect = tip.getBoundingClientRect();
+      const margin  = 10;
+      let left = rect.left + window.scrollX;
+      // Clamp horizontally so the tooltip stays fully on-screen.
+      const maxLeft = window.scrollX + window.innerWidth - tipRect.width - 4;
+      if (left > maxLeft) left = maxLeft;
+      if (left < window.scrollX + 4) left = window.scrollX + 4;
+      // Prefer above; flip below if there isn't room.
+      let top = rect.top + window.scrollY - tipRect.height - margin;
+      if (top < window.scrollY + 4) top = rect.bottom + window.scrollY + margin;
+      tip.style.left = left + 'px';
+      tip.style.top  = top + 'px';
+    };
+
+    const show = (target) => {
+      const key = target.getAttribute('data-tip-id');
+      if (!key) return;
+      const tpl = document.getElementById('tpl-' + key);
+      if (!tpl || !tpl.content) return;
+      tip.innerHTML = '';
+      tip.appendChild(tpl.content.cloneNode(true));
+      if (hydrate) hydrate(tip);
+      // Position requires the tip to be measurable — show invisibly
+      // first so we can read its size, then flip to visible.
+      tip.style.visibility = 'hidden';
+      tip.classList.add('show');
+      position(target);
+      tip.style.visibility = '';
+      tip.setAttribute('aria-hidden', 'false');
+      current = target;
+    };
+
+    const hide = () => {
+      if (!current) return;
+      tip.classList.remove('show');
+      tip.setAttribute('aria-hidden', 'true');
+      current = null;
+    };
+
+    document.addEventListener('mouseover', (e) => {
+      const t = e.target && e.target.closest && e.target.closest('[data-tip-id]');
+      if (!t) return;
+      if (t === current) return;
+      if (current) hide();
+      show(t);
+    });
+    document.addEventListener('mouseout', (e) => {
+      const t = e.target && e.target.closest && e.target.closest('[data-tip-id]');
+      if (!t || t !== current) return;
+      // Only hide if the pointer left the target itself (not a child).
+      if (t.contains(e.relatedTarget)) return;
+      hide();
+    });
+    document.addEventListener('focusin', (e) => {
+      const t = e.target && e.target.closest && e.target.closest('[data-tip-id]');
+      if (!t || t === current) return;
+      if (current) hide();
+      show(t);
+    });
+    document.addEventListener('focusout', (e) => {
+      const t = e.target && e.target.closest && e.target.closest('[data-tip-id]');
+      if (!t || t !== current) return;
+      hide();
+    });
+    window.addEventListener('scroll', hide, { passive: true });
+    window.addEventListener('resize', hide);
   },
 
   /* -------- Theme: auto / light / dark -------- */
