@@ -675,20 +675,22 @@ const UI = {
   },
 
   /**
-   * Switch the Agents panel into the per-agent statistics view. Hides
-   * the cards grid in place and shows a 2×3 grid of sparkline-style
-   * mini charts (cash, shares, wealth+P&L, subj V with FV reference,
-   * reported V with lie-gap markers, normalized utility) for the
-   * selected agent. The header gains a "← Back to agents" button that
-   * restores the cards. Live re-rendering keeps the chosen agent's
-   * series in sync as new ticks arrive — the next render() call is
-   * routed to _renderAgentStatsView when this view is active.
+   * Flip the whole agents area over to reveal the per-agent statistics
+   * view on the back face — a 2×3 grid of sparkline-style mini charts
+   * (cash, shares, wealth+P&L, subj V with FV reference, reported V
+   * with lie-gap markers, normalized utility) for the selected agent.
+   * Per-card "View Prompt" still flips individual cards; "View Stats"
+   * rotates the entire .agents-flip container. The header gains a
+   * "← Back to agents" button that unflips the container. Live
+   * re-rendering keeps the chosen agent's series in sync as new ticks
+   * arrive — the next render() call is routed to _renderAgentStatsView
+   * when this view is active.
    */
   openAgentStatsView(agentId) {
-    const grid    = this.els.agentsGrid;
+    const flip    = document.getElementById('agents-flip');
     const view    = document.getElementById('agent-stats-view');
     const backBtn = document.getElementById('agent-stats-back');
-    if (!grid || !view || !backBtn) return;
+    if (!flip || !view || !backBtn) return;
 
     this._statsViewAgentId = agentId;
 
@@ -700,20 +702,31 @@ const UI = {
       });
     }
 
-    grid.hidden    = true;
-    view.hidden    = false;
+    flip.classList.add('flipped');
     backBtn.hidden = false;
     document.body.classList.add('agent-stats-active');
 
+    // Render once immediately so content is in place as the flip starts,
+    // and again after the transform settles so the canvases size against
+    // their final rect rather than a mid-flip (foreshortened) one. rAF
+    // alone isn't enough because the main render loop only re-ticks
+    // while the engine runs.
     requestAnimationFrame(() => this._renderAgentStatsView());
+    const inner = flip.querySelector('.agents-flip-inner');
+    if (inner) {
+      const onDone = (e) => {
+        if (e.target !== inner || e.propertyName !== 'transform') return;
+        inner.removeEventListener('transitionend', onDone);
+        this._renderAgentStatsView();
+      };
+      inner.addEventListener('transitionend', onDone);
+    }
   },
 
   closeAgentStatsView() {
-    const grid    = this.els.agentsGrid;
-    const view    = document.getElementById('agent-stats-view');
+    const flip    = document.getElementById('agents-flip');
     const backBtn = document.getElementById('agent-stats-back');
-    if (grid)    grid.hidden    = false;
-    if (view)    view.hidden    = true;
+    if (flip)    flip.classList.remove('flipped');
     if (backBtn) backBtn.hidden = true;
     document.body.classList.remove('agent-stats-active');
     this._statsViewAgentId = null;
@@ -721,7 +734,7 @@ const UI = {
 
   _renderAgentStatsView() {
     const view = document.getElementById('agent-stats-view');
-    if (!view || view.hidden) return;
+    if (!view) return;
     const agentId = this._statsViewAgentId;
     if (agentId == null) return;
 

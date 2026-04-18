@@ -447,39 +447,47 @@
       <h2>Agents <span class="stage-label">Pre-run draft · editable before the simulation starts</span></h2>
       <button type="button" id="agent-stats-back" class="agent-stats-back" hidden>&larr; Back to agents</button>
     </div>
-    <div id="agents-grid" class="agents-grid"></div>
-    <div id="agent-stats-view" class="agent-stats-view" hidden>
-      <div class="stats-view-head">
-        <div class="stats-view-title">
-          <span class="stats-view-name">—</span>
-          <span class="stats-view-meta">—</span>
+    <div id="agents-flip" class="agents-flip">
+      <div class="agents-flip-inner">
+        <div class="agents-flip-front">
+          <div id="agents-grid" class="agents-grid"></div>
         </div>
-      </div>
-      <div class="stats-grid">
-        <figure class="stats-panel" data-stat="cash">
-          <figcaption>Cash · <span class="sym" data-sym="cash"></span></figcaption>
-          <canvas></canvas>
-        </figure>
-        <figure class="stats-panel" data-stat="shares">
-          <figcaption>Shares · <span class="sym" data-sym="shares"></span></figcaption>
-          <canvas></canvas>
-        </figure>
-        <figure class="stats-panel" data-stat="wealth">
-          <figcaption>Wealth · <span class="sym" data-sym="wealth"></span> &amp; P&amp;L <span class="sym" data-sym="pnl"></span></figcaption>
-          <canvas></canvas>
-        </figure>
-        <figure class="stats-panel" data-stat="subjv">
-          <figcaption>Subj V · <span class="sym" data-sym="subjV"></span> vs <span class="sym" data-sym="fv"></span></figcaption>
-          <canvas></canvas>
-        </figure>
-        <figure class="stats-panel" data-stat="reportv">
-          <figcaption>Report V · <span class="sym" data-sym="reportV"></span> (lie gap ringed red)</figcaption>
-          <canvas></canvas>
-        </figure>
-        <figure class="stats-panel" data-stat="utility">
-          <figcaption>Normalized utility · <span class="sym" data-sym="utilityI"></span></figcaption>
-          <canvas></canvas>
-        </figure>
+        <div class="agents-flip-back">
+          <div id="agent-stats-view" class="agent-stats-view">
+            <div class="stats-view-head">
+              <div class="stats-view-title">
+                <span class="stats-view-name">—</span>
+                <span class="stats-view-meta">—</span>
+              </div>
+            </div>
+            <div class="stats-grid">
+              <figure class="stats-panel" data-stat="cash">
+                <figcaption>Cash · <span class="sym" data-sym="cash"></span></figcaption>
+                <canvas></canvas>
+              </figure>
+              <figure class="stats-panel" data-stat="shares">
+                <figcaption>Shares · <span class="sym" data-sym="shares"></span></figcaption>
+                <canvas></canvas>
+              </figure>
+              <figure class="stats-panel" data-stat="wealth">
+                <figcaption>Wealth · <span class="sym" data-sym="wealth"></span> &amp; P&amp;L <span class="sym" data-sym="pnl"></span></figcaption>
+                <canvas></canvas>
+              </figure>
+              <figure class="stats-panel" data-stat="subjv">
+                <figcaption>Subj V · <span class="sym" data-sym="subjV"></span> vs <span class="sym" data-sym="fv"></span></figcaption>
+                <canvas></canvas>
+              </figure>
+              <figure class="stats-panel" data-stat="reportv">
+                <figcaption>Report V · <span class="sym" data-sym="reportV"></span> (lie gap ringed red)</figcaption>
+                <canvas></canvas>
+              </figure>
+              <figure class="stats-panel" data-stat="utility">
+                <figcaption>Normalized utility · <span class="sym" data-sym="utilityI"></span></figcaption>
+                <canvas></canvas>
+              </figure>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="agent-notes">

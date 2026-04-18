@@ -2287,6 +2287,41 @@ body.n-small .agents-grid { max-height: none; overflow-y: visible; padding-right
 }
 .card-btn-stats:hover  { color: var(--accent); }
 .card-btn-prompt:hover { color: var(--pink);   }
+/* Flip container that wraps the agents grid (front) and the per-agent
+   stats view (back). "View Stats" flips the whole agents area — front
+   and back share the same rect so the grid's 410px cap also sizes the
+   stats view; each face uses backface-visibility to stay inert while
+   the other is showing. Mirrors the per-card flip pattern used on the
+   individual cards so the rotate animations read the same. */
+.agents-flip {
+  perspective: 1600px;
+  position: relative;
+}
+.agents-flip-inner {
+  position: relative;
+  width: 100%;
+  min-height: 410px;
+  transition: transform 0.55s cubic-bezier(.15,.9,.35,1);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.agents-flip.flipped .agents-flip-inner {
+  transform: rotateY(180deg);
+}
+.agents-flip-front,
+.agents-flip-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  width: 100%;
+}
+.agents-flip-front { position: relative; }
+.agents-flip-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+body.n-small .agents-flip-inner { min-height: 0; }
+
 /* Per-agent statistics view — replaces the cards grid in place.
    Sized to fit the panel's content area; the 2x3 grid stretches each
    chart's canvas to fill its tile so DPR scaling has a real rect to
