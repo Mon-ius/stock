@@ -1436,8 +1436,8 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
     to right,
     var(--accent) 0%,
     var(--accent) var(--r-pct),
-    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--r-pct),
-    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--R-pct),
+    color-mix(in srgb, var(--accent) 60%, var(--bg-3)) var(--r-pct),
+    color-mix(in srgb, var(--accent) 60%, var(--bg-3)) var(--R-pct),
     var(--bg-3) var(--R-pct),
     var(--bg-3) 100%
   );
@@ -1447,8 +1447,8 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
     to right,
     var(--accent) 0%,
     var(--accent) var(--r-pct),
-    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--r-pct),
-    color-mix(in srgb, var(--accent) 30%, var(--bg-2)) var(--R-pct),
+    color-mix(in srgb, var(--accent) 60%, var(--bg-3)) var(--r-pct),
+    color-mix(in srgb, var(--accent) 60%, var(--bg-3)) var(--R-pct),
     var(--bg-3) var(--R-pct),
     var(--bg-3) 100%
   );
