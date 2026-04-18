@@ -445,8 +445,43 @@
   <section class="panel panel-agents">
     <div class="agents-header">
       <h2>Agents <span class="stage-label">Pre-run draft · editable before the simulation starts</span></h2>
+      <button type="button" id="agent-stats-back" class="agent-stats-back" hidden>&larr; Back to agents</button>
     </div>
     <div id="agents-grid" class="agents-grid"></div>
+    <div id="agent-stats-view" class="agent-stats-view" hidden>
+      <div class="stats-view-head">
+        <div class="stats-view-title">
+          <span class="stats-view-name">—</span>
+          <span class="stats-view-meta">—</span>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <figure class="stats-panel" data-stat="cash">
+          <figcaption>Cash · <span class="sym" data-sym="cash"></span></figcaption>
+          <canvas></canvas>
+        </figure>
+        <figure class="stats-panel" data-stat="shares">
+          <figcaption>Shares · <span class="sym" data-sym="shares"></span></figcaption>
+          <canvas></canvas>
+        </figure>
+        <figure class="stats-panel" data-stat="wealth">
+          <figcaption>Wealth · <span class="sym" data-sym="wealth"></span> &amp; P&amp;L <span class="sym" data-sym="pnl"></span></figcaption>
+          <canvas></canvas>
+        </figure>
+        <figure class="stats-panel" data-stat="subjv">
+          <figcaption>Subj V · <span class="sym" data-sym="subjV"></span> vs <span class="sym" data-sym="fv"></span></figcaption>
+          <canvas></canvas>
+        </figure>
+        <figure class="stats-panel" data-stat="reportv">
+          <figcaption>Report V · <span class="sym" data-sym="reportV"></span> (lie gap ringed red)</figcaption>
+          <canvas></canvas>
+        </figure>
+        <figure class="stats-panel" data-stat="utility">
+          <figcaption>Normalized utility · <span class="sym" data-sym="utilityI"></span></figcaption>
+          <canvas></canvas>
+        </figure>
+      </div>
+    </div>
     <div class="agent-notes">
       <h3 class="agent-notes-title">Note</h3>
       <dl class="agent-notes-list">
@@ -2016,9 +2051,9 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
 <script data-cfasync="false" src="js/logger.js?v=21"></script>
 <script data-cfasync="false" src="js/viz.js?v=21"></script>
 <script data-cfasync="false" src="js/ai.js?v=21"></script>
-<script data-cfasync="false" src="js/engine.js?v=21"></script>
-<script data-cfasync="false" src="js/ui.js?v=21"></script>
-<script data-cfasync="false" src="js/replay.js?v=21"></script>
+<script data-cfasync="false" src="js/engine.js?v=22"></script>
+<script data-cfasync="false" src="js/ui.js?v=22"></script>
+<script data-cfasync="false" src="js/replay.js?v=22"></script>
 <script data-cfasync="false" src="js/main.js?v=24"></script>
 </body>
 </html>

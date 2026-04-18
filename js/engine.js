@@ -153,6 +153,8 @@ class Engine {
           tick:      m.tick,
           period:    m.period,
           agentId:   agent.id,
+          cash:      agent.cash,
+          inventory: agent.inventory,
           wealth:    u.wealth0,
           utility:   u.U0,
           riskPref:  u.riskPref,

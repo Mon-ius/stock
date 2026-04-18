@@ -237,9 +237,14 @@ const UI = {
   /* -------- Top-level render dispatcher -------- */
 
   render(view, config) {
+    // Cache for ad-hoc consumers (stats view re-renders on demand
+    // outside the per-frame loop).
+    this._lastView   = view;
+    this._lastConfig = config;
     this.renderStats(view, config);
     this.renderBook(view);
     this.renderAgents(view, config);
+    if (this._statsViewAgentId != null) this._renderAgentStatsView();
     this.renderFeed(view);
     this.renderPriceChart(view, config);
     this.renderBubbleChart(view, config);
@@ -543,7 +548,10 @@ const UI = {
                 <span class="metric">Wealth <span class="sym">${sym.wealth || ''}</span></span>  <span class="metric-val">${wealth.toFixed(0)}</span>
                 <span class="metric">P&amp;L <span class="sym">${sym.pnl || ''}</span></span> <span class="metric-val" style="color:${pnlColor}">${pnlStr}</span>${extraRows}
               </div>
-              <div class="card-flip-hint">click to view prompt</div>
+              <div class="card-actions">
+                <button type="button" class="card-btn card-btn-stats" data-action="stats">View Stats</button>
+                <button type="button" class="card-btn card-btn-prompt" data-action="prompt">View Prompt</button>
+              </div>
             </div>
             ${cardBack}
           </div>
@@ -609,7 +617,25 @@ const UI = {
           });
           return;
         }
-        // Flip card toggle.
+        // Card-action buttons on the front face. "View Stats" opens
+        // the per-agent statistics modal; "View Prompt" flips the
+        // card to reveal the LLM prompt / decision-rule blurb.
+        const actionBtn = e.target.closest('.card-btn');
+        if (actionBtn) {
+          const wrap = actionBtn.closest('.agent-card-wrap');
+          if (!wrap) return;
+          e.stopPropagation();
+          const id = Number(wrap.dataset.agentId);
+          if (actionBtn.dataset.action === 'stats') {
+            this.openAgentStatsView(id);
+          } else {
+            if (UI._flipped.has(id)) UI._flipped.delete(id);
+            else                     UI._flipped.add(id);
+            wrap.classList.toggle('flipped');
+          }
+          return;
+        }
+        // Flip card toggle on card background click (legacy behavior).
         const wrap = e.target.closest('.agent-card-wrap.flippable');
         if (!wrap) return;
         if (e.target.closest('.endow-input')) return;
@@ -646,6 +672,250 @@ const UI = {
         if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
       });
     });
+  },
+
+  /**
+   * Switch the Agents panel into the per-agent statistics view. Hides
+   * the cards grid in place and shows a 2×3 grid of sparkline-style
+   * mini charts (cash, shares, wealth+P&L, subj V with FV reference,
+   * reported V with lie-gap markers, normalized utility) for the
+   * selected agent. The header gains a "← Back to agents" button that
+   * restores the cards. Live re-rendering keeps the chosen agent's
+   * series in sync as new ticks arrive — the next render() call is
+   * routed to _renderAgentStatsView when this view is active.
+   */
+  openAgentStatsView(agentId) {
+    const grid    = this.els.agentsGrid;
+    const view    = document.getElementById('agent-stats-view');
+    const backBtn = document.getElementById('agent-stats-back');
+    if (!grid || !view || !backBtn) return;
+
+    this._statsViewAgentId = agentId;
+
+    if (!this._statsViewWired) {
+      this._statsViewWired = true;
+      backBtn.addEventListener('click', () => this.closeAgentStatsView());
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this._statsViewAgentId != null) this.closeAgentStatsView();
+      });
+    }
+
+    grid.hidden    = true;
+    view.hidden    = false;
+    backBtn.hidden = false;
+    document.body.classList.add('agent-stats-active');
+
+    requestAnimationFrame(() => this._renderAgentStatsView());
+  },
+
+  closeAgentStatsView() {
+    const grid    = this.els.agentsGrid;
+    const view    = document.getElementById('agent-stats-view');
+    const backBtn = document.getElementById('agent-stats-back');
+    if (grid)    grid.hidden    = false;
+    if (view)    view.hidden    = true;
+    if (backBtn) backBtn.hidden = true;
+    document.body.classList.remove('agent-stats-active');
+    this._statsViewAgentId = null;
+  },
+
+  _renderAgentStatsView() {
+    const view = document.getElementById('agent-stats-view');
+    if (!view || view.hidden) return;
+    const agentId = this._statsViewAgentId;
+    if (agentId == null) return;
+
+    const appView = this._lastView;
+    const config  = this._lastConfig;
+    if (!appView || !config) return;
+
+    const agent = (appView.agents || {})[agentId];
+    const nameEl = view.querySelector('.stats-view-name');
+    const metaEl = view.querySelector('.stats-view-meta');
+    if (nameEl) nameEl.textContent = (agent && agent.name) || ('agent_' + agentId);
+    if (metaEl) {
+      const parts = [];
+      if (agent) {
+        if (agent.riskPref) {
+          const rp = UI._riskLabel[agent.riskPref] || agent.riskPref;
+          const rho = Number.isFinite(agent.rho) ? ` · ρᵢ = ${agent.rho.toFixed(2)}` : '';
+          parts.push(rp + rho);
+        } else if (agent.type) {
+          parts.push(UI._typeLabel[agent.type] || agent.type);
+        }
+        if (agent.roundsPlayed != null) parts.push(`R${agent.roundsPlayed}`);
+      }
+      metaEl.textContent = parts.join(' · ') || '—';
+    }
+
+    const uHist = (appView.utilityHistory   || []).filter(r => r.agentId === agentId);
+    const vHist = (appView.valuationHistory || []).filter(r => r.agentId === agentId);
+    const msgs  = (appView.messages         || []).filter(m => m.senderId === agentId);
+
+    const totalTicks = (config.roundsPerSession || 1) * config.periods * config.ticksPerPeriod;
+    const initW      = (agent && agent.initialWealth != null) ? agent.initialWealth : null;
+
+    const cashPts   = uHist.filter(r => r.cash      != null).map(r => ({ x: r.tick, y: r.cash }));
+    const sharesPts = uHist.filter(r => r.inventory != null).map(r => ({ x: r.tick, y: r.inventory }));
+    const wealthPts = uHist.filter(r => r.wealth    != null).map(r => ({ x: r.tick, y: r.wealth }));
+    const pnlPts    = (initW != null)
+      ? uHist.filter(r => r.wealth != null).map(r => ({ x: r.tick, y: r.wealth - initW }))
+      : [];
+    const subjVPts   = vHist.filter(r => r.subjV    != null).map(r => ({ x: r.tick, y: r.subjV }));
+    const reportVPts = vHist.filter(r => r.reportedV != null).map(r => ({ x: r.tick, y: r.reportedV }));
+    const utilPts    = uHist.filter(r => r.utility  != null).map(r => ({ x: r.tick, y: r.utility }));
+
+    const fvPoints = [];
+    const sessionPeriods = (config.roundsPerSession || 1) * config.periods;
+    for (let g = 1; g <= sessionPeriods; g++) {
+      const localP = ((g - 1) % config.periods) + 1;
+      const fv     = config.dividendMean * (config.periods - localP + 1);
+      fvPoints.push({ x: (g - 1) * config.ticksPerPeriod, y: fv });
+      fvPoints.push({ x:  g      * config.ticksPerPeriod, y: fv });
+    }
+
+    const color = this.agentColor(agentId);
+    const render = (selector, opts) => this._renderStatsSparkline(
+      view.querySelector(selector),
+      Object.assign({ xMin: 0, xMax: totalTicks, color, agentView: appView, config }, opts),
+    );
+
+    render('[data-stat="cash"] canvas',   { series: [{ points: cashPts,   color, width: 1.6 }],
+                                            yLabel: y => y.toFixed(0) });
+    render('[data-stat="shares"] canvas', { series: [{ points: sharesPts, color, width: 1.6, step: true }],
+                                            yMinFloor: 0, yLabel: y => y.toFixed(0) });
+    render('[data-stat="wealth"] canvas', {
+      series: [
+        { points: wealthPts, color, width: 1.6, label: 'Wealth' },
+        { points: pnlPts,    color: this.theme.accent, width: 1.2, dashed: true, label: 'P&L' },
+      ],
+      yLabel: y => y.toFixed(0),
+      baseline: 0,
+    });
+    render('[data-stat="subjv"] canvas', {
+      series: [
+        { points: fvPoints, color: this.theme.amber, width: 1.4, dashed: true, label: 'FV' },
+        { points: subjVPts, color, width: 1.6, label: 'Subj V' },
+      ],
+      yMinFloor: 0, yLabel: y => y.toFixed(0),
+    });
+    render('[data-stat="reportv"] canvas', {
+      series: [
+        { points: subjVPts,   color: this.theme.fg3, width: 1.2, dashed: true, label: 'Subj V' },
+        { points: reportVPts, color, width: 1.6, label: 'Report V' },
+      ],
+      yMinFloor: 0, yLabel: y => y.toFixed(0),
+      lieMarkers: msgs.filter(m => m.deceptive).map(m => ({
+        x: m.tick,
+        y: m.claimedValuation,
+        yTrue: m.trueValuation,
+      })),
+    });
+    render('[data-stat="utility"] canvas', {
+      series: [{ points: utilPts, color, width: 1.6 }],
+      baseline: 1,
+      yLabel: y => y.toFixed(2),
+    });
+  },
+
+  /** Draw one sparkline-style mini chart inside the stats modal. */
+  _renderStatsSparkline(canvas, opts) {
+    if (!canvas) return;
+    const dpr  = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    Viz.clear(ctx, rect.width, rect.height);
+    const plot = Viz.plotRect(rect.width, rect.height, 40, 10, 10, 22);
+
+    const { xMin, xMax, series, yLabel, baseline, lieMarkers, yMinFloor } = opts;
+    let yMin = Infinity, yMax = -Infinity;
+    for (const s of series) {
+      for (const p of s.points) {
+        if (p.y == null) continue;
+        if (p.y < yMin) yMin = p.y;
+        if (p.y > yMax) yMax = p.y;
+      }
+    }
+    if (baseline != null) {
+      if (baseline < yMin) yMin = baseline;
+      if (baseline > yMax) yMax = baseline;
+    }
+    if (lieMarkers) {
+      for (const m of lieMarkers) {
+        if (m.y    != null && m.y    < yMin) yMin = m.y;
+        if (m.y    != null && m.y    > yMax) yMax = m.y;
+        if (m.yTrue != null && m.yTrue < yMin) yMin = m.yTrue;
+        if (m.yTrue != null && m.yTrue > yMax) yMax = m.yTrue;
+      }
+    }
+    if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) { yMin = 0; yMax = 1; }
+    if (yMinFloor != null && yMin > yMinFloor) yMin = yMinFloor;
+    const span = Math.max(1e-6, yMax - yMin);
+    yMin = yMin - span * 0.08;
+    yMax = yMax + span * 0.08;
+
+    Viz.axes(ctx, plot, {
+      xMin, xMax, yMin, yMax,
+      xTicks: opts.config.roundsPerSession || 1, yTicks: 3,
+      xFmt: x => this._roundLabel(opts.agentView, opts.config, x),
+      yFmt: yLabel || (y => y.toFixed(0)),
+    });
+
+    this._drawRoundDividers(ctx, plot, opts.config, xMin, xMax, opts.agentView);
+
+    if (baseline != null) {
+      const by = Viz.mapY(plot, baseline, yMin, yMax);
+      ctx.save();
+      ctx.strokeStyle = this.theme.fg3;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(plot.x, by); ctx.lineTo(plot.x + plot.w, by); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    for (const s of series) {
+      if (!s.points.length) continue;
+      const pts = s.step ? this._stepify(s.points) : s.points;
+      Viz.line(ctx, plot, pts, { xMin, xMax, yMin, yMax,
+        color: s.color, width: s.width || 1.4, dashed: !!s.dashed });
+    }
+
+    if (lieMarkers && lieMarkers.length) {
+      ctx.save();
+      ctx.strokeStyle = this.theme.red;
+      ctx.lineWidth = 1;
+      for (const m of lieMarkers) {
+        const x = Viz.mapX(plot, m.x, xMin, xMax);
+        const y = Viz.mapY(plot, m.y, yMin, yMax);
+        ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.stroke();
+        if (m.yTrue != null) {
+          const yT = Viz.mapY(plot, m.yTrue, yMin, yMax);
+          ctx.setLineDash([2, 2]);
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, yT); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+      ctx.restore();
+    }
+  },
+
+  /** Convert a sparse series to a step-shaped one (hold previous y
+      across each segment). Used for integer-valued shares where the
+      visual intent is "changes abruptly at trades", not smooth. */
+  _stepify(points) {
+    if (points.length < 2) return points.slice();
+    const out = [];
+    for (let i = 0; i < points.length; i++) {
+      out.push(points[i]);
+      if (i < points.length - 1) {
+        out.push({ x: points[i + 1].x, y: points[i].y });
+      }
+    }
+    return out;
   },
 
   /**

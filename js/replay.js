@@ -50,6 +50,7 @@ const Replay = {
         endowmentType:    a.endowmentType,
         // Extended fields (undefined for legacy agents).
         riskPref:            a.riskPref,
+        rho:                 a.rho,
         trueValuation:       a.trueValuation,
         subjectiveValuation: a.subjectiveValuation,
         reportedValuation:   a.reportedValuation,
