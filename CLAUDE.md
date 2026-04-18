@@ -286,12 +286,21 @@ Fundamental value at the start of period *t* of any round is
 `FV_t = dividendMean × (T − t + 1)` — a staircase from `FV_1 = 100` to
 `FV_T = 10` that resets at every round boundary.
 
+## Companion directories
+
+- `latex/` — LaTeX source for the accompanying paper (has its own `README.md`).
+- `pdf/` — compiled paper artifacts.
+- `arch-*.drawio` (four files in the repo root: `pipeline`, `microstructure`,
+  `elicitation`, `revision`) — architecture diagrams. Open these in drawio
+  when the big picture is in question rather than inferring it from code.
+
 ## Working in this repo
 
 - No build, no tests, no package manager. Verify changes by opening
-  `index.html` in a browser and exercising the sliders and Start/Pause/Reset.
-- Live site is served via GitHub Pages (`CNAME` in repo root). Pushes to
-  `master` auto-deploy to <https://stock.m0nius.com>, so keep commits
+  `index.html` in a browser (`open index.html` on macOS) and exercising
+  the sliders and Start/Pause/Reset.
+- Live site <https://stock.m0nius.com> is served via GitHub Pages
+  (`CNAME` in repo root). Pushes to `master` auto-deploy, so keep commits
   scoped tightly and do the browser check before pushing.
 - Prefer editing existing modules over adding new ones — the module boundaries
   above are load-bearing for the replay system.
