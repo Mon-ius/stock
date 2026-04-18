@@ -1929,10 +1929,9 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .chart-ownership canvas { height: 200px; }
 .chart-pnl canvas,
 .chart-subjv canvas    { height: 200px; }
-/* Messages chart grows vertically so every agent gets its own labelled
-   row (renderMessagesChart sets the exact style.height from nAgents).
-   min-height keeps the small-N case compact. */
-.chart-messages canvas { min-height: 200px; }
+/* Messages and Trust share the same 420 px canvas so Figure 9 and
+   Figure 10 line up vertically in the two-column grid. */
+.chart-messages canvas,
 .chart-trust canvas    { height: 420px; }
 /* At N = 6 the trust matrix is 6×6 with per-agent name labels, so
    the 420 px canvas built for the 100×100 regime leaves a huge
@@ -2951,7 +2950,7 @@ body.n-small .agents-flip-inner { min-height: 0; }
   .chart-ownership canvas { height: 170px; }
   .chart-pnl canvas,
   .chart-subjv canvas    { height: 170px; }
-  .chart-messages canvas { min-height: 170px; }
+  .chart-messages canvas { height: 320px; }
   .chart-trust canvas    { height: 320px; }
   body.n-small .chart-trust canvas { height: 200px; }
 

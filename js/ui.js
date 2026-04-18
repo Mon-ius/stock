@@ -1863,48 +1863,28 @@ const UI = {
 
   /* -------- Messages timeline -------- */
   renderMessagesChart(v, config) {
-    let chart = this.charts.messages;
+    const chart = this.charts.messages;
     if (!chart) return;
-    const canvas = this.canvases.messages;
-
-    const ids     = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
-    const nA      = Math.max(1, ids.length);
-
-    // Grow the canvas so every agent gets its own labelled row —
-    // 16 px per agent past the small-N threshold. The previous fixed
-    // 200 px canvas forced a 10-agent stride on the row labels at
-    // N = 100, losing 90% of the per-agent identity. Only re-setup
-    // HiDPI when the height actually changes so per-frame renders
-    // don't thrash.
-    const padT = 16, padB = 38, padL = 66, padR = 14;
-    const rowPx = 16;
-    const minH  = 200;
-    const desiredH = Math.max(minH, nA * rowPx + padT + padB);
-    if (canvas) {
-      const currentH = canvas.getBoundingClientRect().height;
-      if (Math.abs(currentH - desiredH) > 1) {
-        canvas.style.height = desiredH + 'px';
-        chart = this.charts.messages = Viz.setupHiDPI(canvas);
-      }
-    }
-
     const { ctx, width, height } = chart;
     Viz.clear(ctx, width, height);
 
-    const rect = Viz.plotRect(width, height, padL, padR, padT, padB);
+    const ids     = Object.keys(v.agents).map(Number).sort((a, b) => a - b);
+    const nA      = Math.max(1, ids.length);
+    // At the shared 420 px height, N = 100 gives ~4 px rows — too tight
+    // for per-agent names. Fall back to strided numeric ticks like
+    // Figure 10 (Trust) once we pass the fan threshold so the two
+    // figures read as a pair.
+    const compact = nA > UI.FAN_THRESHOLD;
+    const padL    = compact ? 30 : 66;
+    const rect    = Viz.plotRect(width, height, padL, 14, 16, 38);
 
     const rounds         = config.roundsPerSession || 1;
     const sessionPeriods = rounds * config.periods;
     const totalTicks     = sessionPeriods * config.ticksPerPeriod;
     const rowH           = rect.h / nA;
 
-    // Pick a label font size that fits the row and truncate names that
-    // would overflow the left gutter. 10 px is the legibility floor;
-    // when rowH drops below it the font shrinks proportionally.
-    const labelPx = Math.max(8, Math.min(11, Math.floor(rowH - 2)));
-
     ctx.save();
-    ctx.font = labelPx + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.textAlign    = 'right';
     for (let i = 0; i < nA; i++) {
@@ -1913,9 +1893,19 @@ const UI = {
         ctx.fillStyle = this.theme.stripe;
         ctx.fillRect(rect.x, y, rect.w, rowH);
       }
-      ctx.fillStyle = this.agentColor(ids[i]);
-      const name = v.agents[ids[i]] ? v.agents[ids[i]].name : 'U' + ids[i];
-      ctx.fillText(name, rect.x - 6, y + rowH / 2);
+      if (!compact) {
+        ctx.fillStyle = this.agentColor(ids[i]);
+        const name = v.agents[ids[i]] ? v.agents[ids[i]].name : 'U' + ids[i];
+        ctx.fillText(name, rect.x - 6, y + rowH / 2);
+      }
+    }
+    if (compact) {
+      ctx.fillStyle = this.theme.fg3;
+      const stride = Math.max(1, Math.floor(nA / 10));
+      for (let i = 0; i < nA; i += stride) {
+        ctx.fillText('#' + ids[i], rect.x - 6, rect.y + (i + 0.5) * rowH);
+      }
+      ctx.fillText('#' + ids[nA - 1], rect.x - 6, rect.y + (nA - 0.5) * rowH);
     }
     ctx.strokeStyle = this.theme.frame;
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w, rect.h);
