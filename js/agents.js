@@ -637,8 +637,9 @@ class UtilityAgent extends Agent {
    *   Plan II  — LLM with utility form. ctx.llmBeliefs[agentId] holds
    *              the subjective valuation returned by the last
    *              period-boundary LLM call, which was prompted with
-   *              the agent's risk preference AND the explicit utility
-   *              form (U_L, U_N, or U_A). If absent (first period, API
+   *              the agent's risk preference AND the universal CRRA
+   *              utility U(w; ρ) = w^(1−ρ)/(1−ρ) with the agent's
+   *              sampled ρ substituted. If absent (first period, API
    *              error, missing key), Plan II falls back to Plan I.
    *
    *   Plan III — LLM with label only. Same channel as Plan II but the

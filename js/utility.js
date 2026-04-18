@@ -32,9 +32,9 @@
 
    ρ ranges (sampled per agent in agents.js via the engine RNG):
 
-       loving  ρ ∈ [−1,  0)      convex     (0 excluded → stays loving)
-       neutral ρ  = 0            linear     (single-point)
-       averse  ρ ∈ ( 0,  1)      concave    (1 excluded → no log singularity)
+       loving  ρ ∈ (−1,  0)      strictly convex     (open at both ends)
+       neutral ρ  = 0            linear              (single-point)
+       averse  ρ ∈ ( 0,  1)      strictly concave    (open at both ends)
 
    Wealth is mark-to-market (w = cash + inventory × lastPrice, with FV
    as the pre-first-trade fallback) and clamped at 0 so a briefly
@@ -42,8 +42,8 @@
    ===================================================================== */
 
 const CRRA_RHO_RANGES = {
-  loving:  { lo: -1.0, hi: -0.001, mid: -0.5 },
-  neutral: { lo:  0.0, hi:  0.0,   mid:  0.0 },
+  loving:  { lo: -0.999, hi: -0.001, mid: -0.5 },
+  neutral: { lo:  0.0,   hi:  0.0,   mid:  0.0 },
   averse:  { lo:  0.001, hi:  0.999, mid:  0.5 },
 };
 

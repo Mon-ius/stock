@@ -114,8 +114,8 @@ const App = {
   // blends peer messages with weight w = 0.6 + 0.1·min(3, roundsPlayed),
   // so the agent grows less susceptible to influence as rounds of
   // experience accumulate. Plan II calls an LLM every period and
-  // includes the explicit utility-function forms (U_L, U_N, U_A) that
-  // correspond to each agent's risk preference. Plan III calls the
+  // includes the explicit universal CRRA form U(w; ρ) = w^(1−ρ)/(1−ρ)
+  // with each agent's sampled ρ substituted in. Plan III calls the
   // same LLM but only tells it the risk-preference label. On network
   // or API failure, Plans II and III fall back to Plan I's algorithm.
   plan: 'I',
@@ -838,10 +838,11 @@ const App = {
    *   'I'   — algorithm-only belief update. No LLM calls, no network
    *           activity, no API key required.
    *
-   *   'II'  — LLM with explicit utility formulas (U_L / U_N / U_A).
-   *           Every period boundary the engine schedules an async
-   *           `AI.getPlanBeliefs` call whose prompt includes the
-   *           matching formula for each agent's risk preference.
+   *   'II'  — LLM with the explicit universal CRRA utility
+   *           U(w; ρ) = w^(1−ρ)/(1−ρ). Every period boundary the
+   *           engine schedules an async `AI.getPlanBeliefs` call whose
+   *           prompt substitutes each agent's sampled ρ into the
+   *           shared functional form.
    *
    *   'III' — LLM with risk-preference label only. Same channel as
    *           Plan II but the prompt omits the formulas, testing

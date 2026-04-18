@@ -43,7 +43,7 @@
     </div>
     <div class="plan-switch" role="group" aria-label="Research plan">
       <button class="plan-btn active" data-plan="I" title="Plan I — algorithm-only. Each utility agent's prior equals the current fundamental value; posterior = w·prior + (1−w)·avg(foreign peer claims) with w = 0.6 + 0.1·min(3, roundsPlayed), so experience dampens peer influence. No LLM calls, no API key required.">Plan I</button>
-      <button class="plan-btn" data-plan="II" title="Plan II — LLM direct action with utility forms. Every period the model selects an action (BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD) given the agent's risk preference and the explicit utility function U_L / U_N / U_A. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan II</button>
+      <button class="plan-btn" data-plan="II" title="Plan II — LLM direct action with the universal CRRA utility U(w; ρ) = w^(1−ρ) / (1−ρ). Every period the model selects an action (BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD) given the agent's risk preference and its sampled coefficient ρᵢ ∈ (−1, 0) loving / 0 neutral / (0, 1) averse. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan II</button>
       <button class="plan-btn" data-plan="III" title="Plan III — LLM direct action with risk label only. Same LLM channel as Plan II, but the prompt omits the utility formulas and only states the risk-preference label. Tests whether the label alone is enough to recover utility-aware trading. Requires an API key in the AI endpoint panel; falls back to Plan I EU evaluation on failure.">Plan III</button>
     </div>
   </nav>
@@ -110,21 +110,21 @@
               <div class="seg seg-averse"><span>33%</span></div>
             </div>
           </div>
-          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. Every utility agent now shares the universal CRRA form U(w) = (w/w₀)^(1−ρ); loving agents draw ρᵢ ∼ U[−1, 0), so the curve is strictly convex and upside outcomes dominate. A high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-loving preference. Every utility agent now shares the universal CRRA form U(w; ρ) = w^(1−ρ) / (1−ρ); loving agents draw ρᵢ ∼ U(−1, 0), so the curve is strictly convex and upside outcomes dominate. A high αₗ share is the primary fuel for bubble inflation. Linked sliders always sum to 100%.">
             <div class="param-head">
-              <label for="p-risk-loving">Risk-loving <span data-sym="alphaL"></span> · <span data-sym="rhoI"></span> ∈ [−1, 0)</label>
+              <label for="p-risk-loving">Risk-loving <span data-sym="alphaL"></span> · <span data-sym="rhoI"></span> ∈ (−1, 0)</label>
               <span class="pval" id="v-risk-loving">33%</span>
             </div>
             <input type="range" id="p-risk-loving" min="0" max="100" step="1" value="33">
           </div>
-          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. Under the universal CRRA form U(w) = (w/w₀)^(1−ρ), neutral agents are pinned at ρ = 0 so the curve collapses to a linear w/w₀. They price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-neutral preference. Under the universal CRRA form U(w; ρ) = w^(1−ρ) / (1−ρ), neutral agents are pinned at ρ = 0 so the curve collapses to a linear w. They price candidate trades at expected value and post tight, rational quotes around their belief. A larger αₙ share pulls the market toward fundamental value.">
             <div class="param-head">
               <label for="p-risk-neutral">Risk-neutral <span data-sym="alphaN"></span> · <span data-sym="rhoI"></span> = 0</label>
               <span class="pval" id="v-risk-neutral">34%</span>
             </div>
             <input type="range" id="p-risk-neutral" min="0" max="100" step="1" value="34">
           </div>
-          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. Every utility agent now shares the universal CRRA form U(w) = (w/w₀)^(1−ρ); averse agents draw ρᵢ ∼ U(0, 1), so the curve is strictly concave and downside losses dominate. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
+          <div class="param-row" data-tip="Fraction of utility agents instantiated with the risk-averse preference. Every utility agent now shares the universal CRRA form U(w; ρ) = w^(1−ρ) / (1−ρ); averse agents draw ρᵢ ∼ U(0, 1), so the curve is strictly concave and downside losses dominate. These agents quote wide, refuse aggressive bids during an inflating bubble, and dampen turnover. Higher αₐ share suppresses bubbles.">
             <div class="param-head">
               <label for="p-risk-averse">Risk-averse <span data-sym="alphaA"></span> · <span data-sym="rhoI"></span> ∈ (0, 1)</label>
               <span class="pval" id="v-risk-averse">33%</span>
@@ -142,7 +142,7 @@
             agent calls the LLM for a direct trading action (BUY_NOW, SELL_NOW,
             BID_1, BID_3, ASK_1, ASK_3, HOLD). The structured prompt includes
             market rules, decision-making principles, role-specific guidance,
-            and the explicit closed-form utility function ($U_L$, $U_N$, $U_A$).
+            and the explicit closed-form utility function $U(w; \rho_i) = w^{1-\rho_i}/(1 - \rho_i)$ with the agent's sampled $\rho_i$ substituted in.
             Fields are read fresh from the DOM on every run (no localStorage);
             if the key is empty the Start button will refuse to launch.
           </p>
@@ -465,7 +465,7 @@
         <dt>Last action <span data-sym="action"></span></dt>
         <dd>the most recent decision taken by agent <em>i</em> at tick <em>t</em>, displayed as a coloured tag on the card. In Plan I the agent selects $\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$ over $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$ scored under the risk-typed utility functional <span data-sym="uOfW"></span> (see Architecture Figure 2).</dd>
         <dt>Subtitle</dt>
-        <dd>for classic agents, the strategy class (Fundamentalist, Trend follower, Random ZI, Experienced) together with set membership (<span data-sym="inF"></span>, <span data-sym="inT"></span>, <span data-sym="inR"></span>, <span data-sym="inE"></span>). For Utility agents, the risk preference and its functional: <em>Risk-loving</em> <span data-sym="uLoving"></span> (convex, upside-seeking), <em>Risk-neutral</em> <span data-sym="uNeutral"></span> (linear expected value), and <em>Risk-averse</em> <span data-sym="uAverse"></span> (concave, downside-sensitive).</dd>
+        <dd>for classic agents, the strategy class (Fundamentalist, Trend follower, Random ZI, Experienced) together with set membership (<span data-sym="inF"></span>, <span data-sym="inT"></span>, <span data-sym="inR"></span>, <span data-sym="inE"></span>). For Utility agents, the risk preference and the agent's sampled CRRA coefficient <span data-sym="rhoI"></span> in the universal form <span data-sym="uCRRA"></span>: <em>Risk-loving</em> draws <span data-sym="rhoI"></span> ∈ (−1, 0) (convex, upside-seeking), <em>Risk-neutral</em> pins <span data-sym="rhoI"></span> = 0 (linear expected value), and <em>Risk-averse</em> draws <span data-sym="rhoI"></span> ∈ (0, 1) (concave, downside-sensitive).</dd>
       </dl>
     </div>
   </section>
@@ -631,7 +631,7 @@
       <div class="fig-note">
         <h4 class="fig-note-title">Note</h4>
         <dl class="fig-note-list">
-          <dt><span data-sym="uOfW"></span></dt><dd>risk-typed utility: <span data-sym="uLoving"></span>, <span data-sym="uNeutral"></span>, <span data-sym="uAverse"></span></dd>
+          <dt><span data-sym="uOfW"></span></dt><dd>universal CRRA utility <span data-sym="uCRRA"></span> with per-agent <span data-sym="rhoI"></span> sampled uniformly in (−1, 0) loving · {0} neutral · (0, 1) averse</dd>
           <dt><span data-sym="wealth"></span></dt><dd>mark-to-fundamental wealth at tick <em>t</em></dd>
         </dl>
       </div>
@@ -905,19 +905,19 @@
           <g class="n n-util" transform="translate(40 148)">
             <rect width="224" height="40" rx="6" ry="6"/>
             <foreignObject width="224" height="40">
-              <div class="fo-node"><div class="fo-t">$U_L(w) = (w/w_0)^2$</div></div>
+              <div class="fo-node"><div class="fo-t">Risk-loving · $\rho_i \in (-1, 0)$</div></div>
             </foreignObject>
           </g>
           <g class="n n-util" transform="translate(278 148)">
             <rect width="224" height="40" rx="6" ry="6"/>
             <foreignObject width="224" height="40">
-              <div class="fo-node"><div class="fo-t">$U_N(w) = w/w_0$</div></div>
+              <div class="fo-node"><div class="fo-t">Risk-neutral · $\rho_i = 0$</div></div>
             </foreignObject>
           </g>
           <g class="n n-util" transform="translate(516 148)">
             <rect width="204" height="40" rx="6" ry="6"/>
             <foreignObject width="204" height="40">
-              <div class="fo-node"><div class="fo-t">$U_A(w) = \sqrt{w/w_0}$</div></div>
+              <div class="fo-node"><div class="fo-t">Risk-averse · $\rho_i \in (0, 1)$</div></div>
             </foreignObject>
           </g>
           <g class="n n-eu" transform="translate(80 200)">
@@ -948,8 +948,8 @@
           <h4>Expected-Utility Scoring</h4>
           <p class="role">Shared across plans</p>
           <div class="formula">$$ \mathrm{EU}(\alpha) \;=\; p_{\text{fill}} \cdot U(w_1) \;+\; (1 - p_{\text{fill}}) \cdot U(w_0), \qquad \alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha) $$</div>
-          <div class="formula">$$ U_L(w) = (w/w_0)^2,\qquad U_N(w) = w/w_0,\qquad U_A(w) = \sqrt{w/w_0} $$</div>
-          <p class="body">$\hat{V}_i \equiv V_i^{\text{post}}$ is agent $i$'s subjective valuation — the posterior output of the active plan (see Figure 3). $c_i$ is cash; $q_i$ is share inventory. $w_0 = c_i + q_i \cdot \hat{V}_i$ is current wealth; $w_1 = (c_i \pm p_{\text{order}}) + (q_i \pm 1) \cdot \hat{V}_i$ is wealth after a hypothetical fill at order price $p_{\text{order}}$. For crossing actions (buy@$A_t$ and sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive quotes (bid, ask), $p_{\text{fill}} = 0.30$ (tunable). In Plan I, agent $i$ maximizes EU over the five-element action set $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the best ask and $B_t$ is the best bid on the order book at tick $t$. In Plans II/III the LLM selects directly from $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$. Risk-loving / neutral / averse pick $U_L$, $U_N$, or $U_A$.</p>
+          <div class="formula">$$ U(w;\rho_i) \;=\; \dfrac{w^{1-\rho_i}}{1 - \rho_i}, \qquad \text{evaluated in normalized form } (w/w_0)^{1-\rho_i} $$</div>
+          <p class="body">$\hat{V}_i \equiv V_i^{\text{post}}$ is agent $i$'s subjective valuation — the posterior output of the active plan (see Figure 3). $c_i$ is cash; $q_i$ is share inventory. $w_0 = c_i + q_i \cdot \hat{V}_i$ is current wealth; $w_1 = (c_i \pm p_{\text{order}}) + (q_i \pm 1) \cdot \hat{V}_i$ is wealth after a hypothetical fill at order price $p_{\text{order}}$. For crossing actions (buy@$A_t$ and sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive quotes (bid, ask), $p_{\text{fill}} = 0.30$ (tunable). In Plan I, agent $i$ maximizes EU over the five-element action set $\alpha_{i,t} \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the best ask and $B_t$ is the best bid on the order book at tick $t$. In Plans II/III the LLM selects directly from $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$. Every agent shares the same universal CRRA functional and differs only in its sampled coefficient $\rho_i$: risk-loving draws from $\mathcal{U}(-1, 0)$ (strictly convex), risk-neutral pins at $0$ (linear), risk-averse draws from $\mathcal{U}(0, 1)$ (strictly concave).</p>
         </div>
         <div class="arch-def-card card-ll">
           <h4>Advanced Settings — Prior Toggles &amp; Empirical Dividends</h4>
@@ -998,8 +998,8 @@
             <rect width="224" height="72" rx="6" ry="6"/>
             <foreignObject width="224" height="72">
               <div class="fo-node">
-                <div class="fo-t">Plan II · LLM + forms</div>
-                <div class="fo-s">prompt $\supseteq \{U_L, U_N, U_A\}$</div>
+                <div class="fo-t">Plan II · LLM + form</div>
+                <div class="fo-s">prompt $\supseteq U(w; \rho_i)$</div>
                 <div class="fo-s">$\alpha^\star_{i,t} \!\leftarrow\! \text{LLM}(\pi^{\text{II}})$</div>
               </div>
             </foreignObject>
@@ -1049,17 +1049,17 @@
           <p class="body">$\lambda$ is the EMA learning rate (not to be confused with the action variable $\alpha_{i,t}$). Receiver $r$'s trust in sender $s$ is reinforced when $s$'s claimed valuation $\hat{v}_s$ (see Plan I card) tracks the period's volume-weighted average price $\mathrm{VWAP}_t = \sum_j p_j q_j / \sum_j q_j$, where $p_j$ and $q_j$ are the price and quantity of trade $j$ in period $t$. Closeness is clipped to $[0, 1]$; $\tau$ is initialized at $0.5$ (neutral) with self-trust fixed at $1.0$. Logged on every plan, read by Plan II/III prompts for context.</p>
         </div>
         <div class="arch-def-card card-wang">
-          <h4>Plan II — LLM Posterior with Utility Forms</h4>
+          <h4>Plan II — LLM Posterior with Utility Form</h4>
           <p class="role">LLM-based</p>
-          <div class="formula">$$ \alpha^\star_{i,t} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \supset \{\,U_L(w) = (w/w_0)^2,\; U_N(w) = w/w_0,\; U_A(w) = \sqrt{w/w_0}\,\} $$</div>
+          <div class="formula">$$ \alpha^\star_{i,t} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \supset \Bigl\{\,U(w;\rho_i) \;=\; \dfrac{w^{1-\rho_i}}{1 - \rho_i}\,\Bigr\} $$</div>
           <div class="formula">$$ \alpha^\star_{i,t} \in \{\text{BUY\_NOW},\,\text{SELL\_NOW},\,\text{BID\_1},\,\text{BID\_3},\,\text{ASK\_1},\,\text{ASK\_3},\,\text{HOLD}\} $$</div>
-          <p class="body">$\pi_i^{\text{II}}$ is a structured prompt injected with: market rules ($T$, dividend structure), the agent's private state ($c_i$, $q_i$, $\hat{V}_i$, $w_0 = c_i + q_i \cdot \hat{V}_i$), the explicit utility formula for the agent's risk type ($U_L$, $U_N$, or $U_A$ with $w_0$ as the normalization base), current book state (best bid/ask), peer trust scores $\tau_{r \to s}$, and received messages $\{\hat{v}_m\}$. The LLM returns a discrete action $\alpha^\star_{i,t}$ from the seven-element set; the engine translates it to an order at the current book price. Fire-and-forget: a failed or invalid action falls back to the Plan I EU evaluation.</p>
+          <p class="body">$\pi_i^{\text{II}}$ is a structured prompt injected with: market rules ($T$, dividend structure), the agent's private state ($c_i$, $q_i$, $\hat{V}_i$, $w_0 = c_i + q_i \cdot \hat{V}_i$), the universal CRRA utility formula $U(w; \rho_i)$ with the agent's actual sampled $\rho_i$ value substituted in (so the LLM sees the same exact curve the EU evaluator scores under), current book state (best bid/ask), peer trust scores $\tau_{r \to s}$, and received messages $\{\hat{v}_m\}$. The LLM returns a discrete action $\alpha^\star_{i,t}$ from the seven-element set; the engine translates it to an order at the current book price. Fire-and-forget: a failed or invalid action falls back to the Plan I EU evaluation.</p>
         </div>
         <div class="arch-def-card card-wang">
           <h4>Plan III — LLM Posterior with Risk Label</h4>
           <p class="role">LLM-based</p>
           <div class="formula">$$ \alpha^\star_{i,t} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{III}}\bigr), \qquad \pi_i^{\text{III}} \supset \{\text{risk-loving} \mid \text{risk-neutral} \mid \text{risk-averse}\} $$</div>
-          <p class="body">Identical wiring to Plan II but the prompt omits the closed-form $U_L / U_N / U_A$ expressions and only names the risk-preference category. Isolates the effect of giving the LLM an explicit functional form versus just a label. Same seven-action output set.</p>
+          <p class="body">Identical wiring to Plan II but the prompt omits the closed-form $U(w; \rho_i)$ expression and only names the risk-preference category. Isolates the effect of giving the LLM an explicit functional form versus just a label. Same seven-action output set.</p>
         </div>
         <div class="arch-def-card card-wang">
           <h4>Regulator Warning — Bubble-Ratio Prompt Injection</h4>
@@ -1190,7 +1190,7 @@ Important Rules:
 【Your Type】
 - Risk Preference Type: Risk neutral
   Makes decisions based on expected returns
-- Your utility function: U_N(w) = w / w0  (linear, EV-indifferent)
+- Your utility function: U(w; ρ) = (w / w0)^(1 − ρ), with ρ = 0.000  (linear, EV-indifferent)
   w0 (initial wealth) = 1300 cents.
 
 【Your Past Experience in This Market】
@@ -1317,7 +1317,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
         <thead><tr><th>Term</th><th>Expansion</th><th>Meaning</th></tr></thead>
         <tbody>
           <tr><td class="term">Plan I</td><td>Algorithmic posterior</td><td>Deterministic baseline — $V_i^{\text{post}} = w\cdot V_i^{\text{prior}} + (1-w)\cdot\bar{m}$ with $w = 0.6 + 0.1\,\min(3, k_i)$.</td></tr>
-          <tr><td class="term">Plan II</td><td>LLM posterior · utility forms</td><td>One chat completion per Utility agent per period. LLM returns a discrete action from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Prompt includes the closed-form $U_L / U_N / U_A$ expressions for the agent's risk type.</td></tr>
+          <tr><td class="term">Plan II</td><td>LLM posterior · utility form</td><td>One chat completion per Utility agent per period. LLM returns a discrete action from {BUY_NOW, SELL_NOW, BID_1, BID_3, ASK_1, ASK_3, HOLD}. Prompt includes the closed-form universal CRRA $U(w; \rho_i) = w^{1-\rho_i}/(1 - \rho_i)$ with the agent's actual sampled $\rho_i$ substituted.</td></tr>
           <tr><td class="term">Plan III</td><td>LLM posterior · risk label only</td><td>Same wiring as Plan II but the prompt only names the risk-preference category; no functional form is supplied. Same seven-action output set.</td></tr>
           <tr><td class="term">DLM</td><td>Dufwenberg, Lindqvist &amp; Moore (2005)</td><td>Source paper for the shared market substrate: $T$, $\mathbb{E}[d]$, $\mathrm{FV}_t$, and the four-round session loop.</td></tr>
           <tr><td class="term">U</td><td>Utility</td><td>EU-maximising agent — the sole agent class ($N = 100$). Per-period belief update is what Plans I, II, and III compare.</td></tr>
@@ -1349,12 +1349,12 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
           <tr><td class="term math">$\sigma_m \in \{H, B, D\}$</td><td>Communication strategy of agent $m$: $H$ = truthful (small uniform jitter), $B$ = biased (fixed-sign tilt), $D$ = strategic (inventory-dependent over/understatement). Assigned at birth and persistent across rounds.</td><td>Distortion multiplier $\phi_m$ in $\hat{v}_m$ (Figure 3)</td></tr>
           <tr><td class="term math">$\phi_m$</td><td>Communication distortion multiplier. $\phi_m = 1 + \mathcal{U}[-h, h]$ if $\sigma_m = H$; $\phi_m = 1 + \delta_m \gamma$ if $\sigma_m = B$; $\phi_m = \kappa^+$ or $\kappa^-$ if $\sigma_m = D$ (depending on $q_m$ vs $q_m^0$). Parameters: $h = 0.02$, $\gamma = 0.10$, $\kappa^+ = 1.25$, $\kappa^- = 0.75$.</td><td>$\hat{v}_m = \max(0,\, V_m \cdot \phi_m)$ (Figure 3)</td></tr>
           <tr><td class="term math">$V_i^{\text{post}}$</td><td>Agent $i$'s period-end valuation — the output of the active plan. Plan I (algorithmic): $V_i^{\text{post}} = w \cdot V_i^{\text{prior}} + (1 - w) \cdot \bar{m}$, or $V_i^{\text{prior}}$ if no messages. Plans II/III: set directly by the LLM's chosen action.</td><td>Becomes next period's prior in all three plans (Figure 3)</td></tr>
-          <tr><td class="term math">$U_L, U_N, U_A$</td><td>Risk-typed utility families. $U_L(w) = (w/w_0)^2$ (risk-loving, strictly convex); $U_N(w) = w/w_0$ (risk-neutral, linear); $U_A(w) = \sqrt{w/w_0}$ (risk-averse, strictly concave). All normalized by initial wealth $w_0$.</td><td>EU scoring; formulas appear explicitly in Plan II prompts (Figures 2–3)</td></tr>
+          <tr><td class="term math">$U(w; \rho_i)$</td><td>Universal CRRA utility shared by every agent: $U(w;\rho) = w^{1-\rho}/(1-\rho)$, evaluated in normalized form $(w/w_0)^{1-\rho}$ so $U(w_0) = 1$. The per-agent coefficient $\rho_i$ is drawn uniformly from $(-1, 0)$ (risk-loving, strictly convex), pinned at $0$ (risk-neutral, linear), or drawn uniformly from $(0, 1)$ (risk-averse, strictly concave).</td><td>EU scoring; the substituted $\rho_i$ appears explicitly in Plan II prompts (Figures 2–3)</td></tr>
           <tr><td class="term math">$w_0, w_1$</td><td>Wealth states for EU evaluation. $w_0 = c_i + q_i \cdot \hat{V}_i$ (wealth if no trade); $w_1 = (c_i \pm p_{\text{order}}) + (q_i \pm 1) \cdot \hat{V}_i$ (wealth if the order fills at price $p_{\text{order}}$), where $c_i$ is cash, $q_i$ is inventory, and $\hat{V}_i \equiv V_i^{\text{post}}$ is the agent's subjective valuation.</td><td>EU scoring — $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$ (Figure 2)</td></tr>
           <tr><td class="term math">$p_{\text{fill}} = 0.30$</td><td>Assumed fill probability for a non-crossing (passive) quote. Used in the EU functional: $\mathrm{EU}(\alpha) = p_{\text{fill}} \cdot U(w_1) + (1 - p_{\text{fill}}) \cdot U(w_0)$. For crossing actions (buy@$A_t$, sell@$B_t$), $p_{\text{fill}} = 1$ (deterministic); for passive actions (bid, ask), $p_{\text{fill}} = 0.30$ (tunable).</td><td>EU scoring — $\alpha^\star_{i,t}$ action evaluation (Figure 2)</td></tr>
           <tr><td class="term math">$\alpha^\star_{i,t}$</td><td>Optimal action for agent $i$ at tick $t$. $\alpha^\star_{i,t} = \arg\max_\alpha \mathrm{EU}(\alpha)$ over the five-element set $\alpha \in \{\text{hold},\, \text{buy@}A_t,\, \text{sell@}B_t,\, \text{bid},\, \text{ask}\}$, where $A_t$ is the current best ask and $B_t$ is the current best bid. buy@$A_t$ crosses the book at the resting ask (deterministic fill, $p_{\text{fill}} = 1$); sell@$B_t$ lifts the resting bid (deterministic fill); bid and ask post passive quotes ($p_{\text{fill}} = 0.30$). Plans II/III use a seven-element LLM action set: $\{\text{BUY\_NOW, SELL\_NOW, BID\_1, BID\_3, ASK\_1, ASK\_3, HOLD}\}$.</td><td>Action selection — output of EU maximization (Figures 2–3)</td></tr>
           <tr><td class="term math">$\tau_{r \to s}$</td><td>Trust of receiver $r$ in sender $s$. Updated by exponential moving average: $\tau_{r \to s} \leftarrow (1 - \lambda)\,\tau_{r \to s} + \lambda \cdot \text{closeness}_{r,s}$, where $\lambda = 0.30$ is the EMA learning rate and $\text{closeness} = \max\!\bigl(0,\, 1 - |\hat{v}_s - \text{VWAP}_t|\,/\,\text{VWAP}_t\bigr)$. Initialized at $0.5$; self-trust fixed at $1.0$.</td><td>Messaging diagnostic; context for Plan II/III prompts (Figure 3)</td></tr>
-          <tr><td class="term math">$\pi_i^{\text{II}}, \pi_i^{\text{III}}$</td><td>Structured LLM prompts for Plans II and III. $\pi^{\text{II}}$ includes market rules, agent state, and the explicit utility formula $U_L/U_N/U_A$ for the agent's risk type. $\pi^{\text{III}}$ omits the formula and supplies only the risk-preference label.</td><td>LLM posterior — input to $\alpha^\star_{i,t} \leftarrow \text{LLM}(\pi_i)$ (Figure 3)</td></tr>
+          <tr><td class="term math">$\pi_i^{\text{II}}, \pi_i^{\text{III}}$</td><td>Structured LLM prompts for Plans II and III. $\pi^{\text{II}}$ includes market rules, agent state, and the explicit universal CRRA formula $U(w; \rho_i) = w^{1-\rho_i}/(1 - \rho_i)$ with the agent's sampled $\rho_i$. $\pi^{\text{III}}$ omits the formula and supplies only the risk-preference label.</td><td>LLM posterior — input to $\alpha^\star_{i,t} \leftarrow \text{LLM}(\pi_i)$ (Figure 3)</td></tr>
           <tr><td class="term math">$Q$</td><td>Total shares outstanding, $Q = \sum_i q_i$, conserved under double-auction trades (shares transfer, never created or destroyed).</td><td>Normalized deviation $\mathrm{ND}$, turnover $\mathrm{TO}$ (Figure 4)</td></tr>
           <tr><td class="term math">$\bar{p}_t$</td><td>Mean trade price in global period $t$. $\bar{p}_t = \sum_{j \in \mathcal{T}_t} p_j \,/\, |\mathcal{T}_t|$ where $\mathcal{T}_t$ is the set of trades in period $t$. Used as the basis for Haessel $R^2$ and amplitude.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
           <tr><td class="term math">$R^2_{\text{Haessel}}$</td><td>Haessel (1978) coefficient of determination. $R^2 = 1 - \sum_t (\bar{p}_t - \mathrm{FV}_t)^2 \,/\, \sum_t (\bar{p}_t - \overline{\bar{p}})^2$. Measures how closely per-period mean prices fit the fundamental staircase; can be negative if mispricing exceeds sample variance.</td><td>Market-quality diagnostics (Figure 4, Table 1)</td></tr>
@@ -1502,7 +1502,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
             <p class="slide-sm"><strong>RQ 1.</strong> Does an LLM-driven belief update (Plan II) produce market dynamics statistically equivalent to the deterministic algorithmic baseline (Plan I), as measured by Haessel $R^2$, normalised deviation, amplitude, and turnover?</p>
           </div>
           <div class="slide-card slide-highlight">
-            <p class="slide-sm"><strong>RQ 2.</strong> Does providing the LLM with the explicit closed-form utility function (Plan II: $U_L, U_N, U_A$) yield different posterior valuations than providing only a risk-preference label (Plan III)?</p>
+            <p class="slide-sm"><strong>RQ 2.</strong> Does providing the LLM with the explicit closed-form universal CRRA utility $U(w; \rho_i) = w^{1-\rho_i}/(1 - \rho_i)$ (Plan II) yield different posterior valuations than providing only a risk-preference label (Plan III)?</p>
           </div>
           <div class="slide-card slide-highlight">
             <p class="slide-sm"><strong>RQ 3.</strong> How do risk composition $(\alpha_L, \alpha_N, \alpha_A)$, strategic deception, and endogenous experience $(k_i)$ interact with the belief-formation channel across all three plans?</p>
@@ -1522,9 +1522,9 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
               <p class="slide-sm">Deterministic weighted blend. No stochasticity beyond the seeded PRNG. Reproducible baseline.</p>
             </div>
             <div class="slide-card">
-              <h4>Plan II · LLM + Forms</h4>
+              <h4>Plan II · LLM + Form</h4>
               <div class="slide-formula">$V_i^{\text{post}} \leftarrow \text{LLM}(\pi_i^{\text{II}})$</div>
-              <p class="slide-sm">Prompt includes the explicit utility functional $U_L, U_N, U_A$ for agent $i$'s risk type, plus wealth and peer claims.</p>
+              <p class="slide-sm">Prompt includes the universal CRRA utility $U(w; \rho_i) = w^{1-\rho_i}/(1 - \rho_i)$ with agent $i$'s sampled $\rho_i$ substituted, plus wealth and peer claims.</p>
             </div>
             <div class="slide-card">
               <h4>Plan III · LLM + Label</h4>
@@ -1601,12 +1601,15 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
           <div class="slide-formula-card">
             $$ \mathcal{A} \;=\; \{\text{hold},\; \text{buy@}A_t,\; \text{sell@}B_t,\; \text{bid},\; \text{ask}\}, \qquad p_{\text{fill}}^{\text{cross}} = 1,\;\; p_{\text{fill}}^{\text{passive}} = 0.30 $$
           </div>
-          <div class="slide-three-col">
-            <div class="slide-card"><h4>$U_L$ · Risk-loving</h4><div class="slide-formula">$U_L(w) = (w/w_0)^2$</div><p class="slide-sm">Convex. Overweights upside. Bubble-amplifying.</p></div>
-            <div class="slide-card"><h4>$U_N$ · Risk-neutral</h4><div class="slide-formula">$U_N(w) = w/w_0$</div><p class="slide-sm">Linear. Prices at expected value. Baseline.</p></div>
-            <div class="slide-card"><h4>$U_A$ · Risk-averse</h4><div class="slide-formula">$U_A(w) = \sqrt{w/w_0}$</div><p class="slide-sm">Concave. Penalises downside. Dampening.</p></div>
+          <div class="slide-formula-card">
+            $$ U(w;\rho) \;=\; \dfrac{w^{1-\rho}}{1-\rho}, \qquad \text{evaluated in normalized form } (w/w_0)^{1-\rho} $$
           </div>
-          <p class="slide-note-sm">Normalized: $u_{i,t} = U_i(w_{i,t})\,/\,U_i(w_{i,0})$ so all agents start at $u = 1$. Risk composition controlled by $(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%.</p>
+          <div class="slide-three-col">
+            <div class="slide-card"><h4>Risk-loving</h4><div class="slide-formula">$\rho_i \sim \mathcal{U}(-1,\,0)$</div><p class="slide-sm">Strictly convex. Overweights upside. Bubble-amplifying.</p></div>
+            <div class="slide-card"><h4>Risk-neutral</h4><div class="slide-formula">$\rho_i = 0$</div><p class="slide-sm">Linear. Prices at expected value. Baseline.</p></div>
+            <div class="slide-card"><h4>Risk-averse</h4><div class="slide-formula">$\rho_i \sim \mathcal{U}(0,\,1)$</div><p class="slide-sm">Strictly concave. Penalises downside. Dampening.</p></div>
+          </div>
+          <p class="slide-note-sm">Normalized: $u_{i,t} = U(w_{i,t};\rho_i)\,/\,U(w_{i,0};\rho_i)$ so all agents start at $u = 1$. Risk composition controlled by $(\alpha_L, \alpha_N, \alpha_A)$ summing to 100%; the per-category $\rho_i$ is drawn from the agent's seeded sampler.</p>
         </div>
       </div>
 
@@ -1662,15 +1665,15 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
       <!-- ======== Slide 12 — Plan II ======== -->
       <div class="slide" data-slide="12">
         <div class="slide-body">
-          <h2 class="slide-heading">Plan II · LLM update with explicit utility forms</h2>
+          <h2 class="slide-heading">Plan II · LLM update with explicit utility form</h2>
           <div class="slide-formula-card">
-            $$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \;\supset\; \bigl\{\,U_L(w)=(w/w_0)^2,\;\; U_N(w)=w/w_0,\;\; U_A(w)=\sqrt{w/w_0}\,\bigr\} $$
+            $$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{II}}\bigr), \qquad \pi_i^{\text{II}} \;\supset\; \Bigl\{\,U(w; \rho_i) \;=\; \dfrac{w^{1-\rho_i}}{1 - \rho_i}\,\Bigr\} $$
           </div>
           <p class="slide-text">At every period boundary the engine fires one parallel chat completion per Utility agent. The prompt $\pi_i^{\text{II}}$ includes:</p>
           <div class="slide-two-col">
             <div class="slide-card">
               <h4>Prompt context $\pi_i^{\text{II}}$</h4>
-              <p class="slide-sm">Explicit risk-utility formula for agent $i$'s type</p>
+              <p class="slide-sm">Explicit universal CRRA formula $U(w; \rho_i)$ with agent $i$'s sampled $\rho_i$ substituted</p>
               <p class="slide-sm">Current mark-to-market wealth $w_{i,t}$</p>
               <p class="slide-sm">Recent peer claims $\{\hat{v}_m : m \in M\}$</p>
               <p class="slide-sm">Trust vector $\{\tau_{i \to s}\}$ for context weighting</p>
@@ -1694,7 +1697,7 @@ Action: &lt;BUY_NOW / SELL_NOW / BID_1 / BID_3 / ASK_1 / ASK_3 / HOLD&gt;</pre>
           <div class="slide-formula-card">
             $$ V_i^{\text{post}} \;\leftarrow\; \mathrm{LLM}\bigl(\pi_i^{\text{III}}\bigr), \qquad \pi_i^{\text{III}} \;\supset\; \{\,\text{risk-loving} \mid \text{risk-neutral} \mid \text{risk-averse}\,\} $$
           </div>
-          <p class="slide-text">Identical wiring and execution semantics to Plan II. The sole difference: the prompt $\pi_i^{\text{III}}$ omits the closed-form $U_L / U_N / U_A$ expressions and supplies only a natural-language risk-preference label.</p>
+          <p class="slide-text">Identical wiring and execution semantics to Plan II. The sole difference: the prompt $\pi_i^{\text{III}}$ omits the closed-form universal CRRA $U(w; \rho_i)$ expression and supplies only a natural-language risk-preference label.</p>
           <div class="slide-card slide-highlight">
             <h4>Identification argument</h4>
             <p class="slide-sm">Plan II $\setminus$ Plan III $=$ the causal effect of providing an explicit functional form. If Plan II $\approx$ Plan III, the LLM has already internalised the mapping from "risk-loving" to convex preferences — the formula is redundant. If Plan II $\neq$ Plan III, the functional form carries information the label does not, and the LLM's implicit risk model diverges from the specified one.</p>
