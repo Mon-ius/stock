@@ -204,6 +204,8 @@ const UI = {
       messages:  document.getElementById('chart-messages'),
       trust:     document.getElementById('chart-trust'),
       ownership: document.getElementById('chart-ownership'),
+      pnl:       document.getElementById('chart-pnl'),
+      subjv:     document.getElementById('chart-subjv'),
     };
 
     this.resizeCanvases();
@@ -250,6 +252,8 @@ const UI = {
     this.renderMessagesChart(view, config);
     this.renderTrustChart(view, config);
     this.renderOwnershipChart(view, config);
+    this.renderPnlChart(view, config);
+    this.renderSubjvChart(view, config);
     this.renderMetrics(view, config);
     this.renderTraces(view);
     // 10-session batch results table. Per-round data labeled
@@ -1392,6 +1396,182 @@ const UI = {
     } else {
       for (const id of ids) {
         Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
+      }
+    }
+
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
+  },
+
+  /* -------- P&L-over-time chart (Figure 11) --------
+     One line per agent of running mark-to-market P&L in cents.
+     Source: utilityHistory rows {tick, agentId, wealth} minus each
+     agent's snapshotted initialWealth. Symmetrical y-axis around the
+     zero baseline so gains and losses are visually comparable. */
+  renderPnlChart(v, config) {
+    const chart = this.charts.pnl;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height, 52, 14, 16, 38);
+
+    const totalTicks = (config.roundsPerSession || 1) * config.periods * config.ticksPerPeriod;
+    const hist       = v.utilityHistory || [];
+    const initialOf  = {};
+    for (const [id, a] of Object.entries(v.agents || {})) {
+      if (a && a.initialWealth != null) initialOf[id] = a.initialWealth;
+    }
+
+    const byAgent  = {};
+    const flatPnls = [];
+    for (const row of hist) {
+      const w0 = initialOf[row.agentId];
+      if (w0 == null || row.wealth == null) continue;
+      const pnl = row.wealth - w0;
+      if (!byAgent[row.agentId]) byAgent[row.agentId] = [];
+      byAgent[row.agentId].push({ x: row.tick, y: pnl });
+      flatPnls.push(pnl);
+    }
+
+    let absMax = 100;
+    for (const p of flatPnls) {
+      const a = Math.abs(p);
+      if (a > absMax) absMax = a;
+    }
+    absMax = absMax * 1.1;
+    const yMin = -absMax, yMax = absMax;
+
+    Viz.axes(ctx, rect, {
+      xMin: 0, xMax: totalTicks, yMin, yMax,
+      xTicks: config.roundsPerSession || 1, yTicks: 4,
+      xFmt: x => this._roundLabel(v, config, x),
+      yFmt: y => (y >= 0 ? '+' : '') + y.toFixed(0),
+    });
+
+    // Zero baseline.
+    const baseY = Viz.mapY(rect, 0, yMin, yMax);
+    ctx.save();
+    ctx.strokeStyle = this.theme.fg3;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(rect.x, baseY); ctx.lineTo(rect.x + rect.w, baseY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
+
+    const ids     = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
+    const nAgents = Object.keys(v.agents || {}).length || ids.length;
+    if (nAgents > UI.FAN_THRESHOLD) {
+      // Re-bucket the derived P&L series for the fan view, keyed on
+      // tick. The shared `bucketByX` helper expects the field name
+      // present on each row, so synthesize a flat array first.
+      const flat = [];
+      for (const id of ids) for (const p of byAgent[id]) flat.push({ tick: p.x, pnl: p.y });
+      const buckets = Viz.bucketByX(flat, 'tick', 'pnl');
+      Viz.fanChart(ctx, rect, buckets, {
+        xMin: 0, xMax: totalTicks, yMin, yMax,
+        colorEnv:    this._fanColor(this.theme.accent, 0.14),
+        colorIQR:    this._fanColor(this.theme.accent, 0.30),
+        colorMedian: this.theme.accent,
+        widthMedian: 2,
+      });
+      ctx.save();
+      ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.textBaseline = 'middle';
+      const y = rect.y + 12;
+      let legendX = rect.x + 10;
+      const drawEntry = (label, color) => {
+        ctx.fillStyle = color;
+        ctx.fillText(label, legendX, y);
+        legendX += ctx.measureText(label).width + 12;
+      };
+      drawEntry('▬ median Δw', this.theme.accent);
+      drawEntry('▮ IQR · envelope', this._fanColor(this.theme.accent, 0.50));
+      drawEntry('⋯ Δw = 0 (break-even)', this.theme.fg3);
+      ctx.restore();
+    } else {
+      for (const id of ids) {
+        Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin, yMax, color: this.agentColor(id), width: 1.6 });
+      }
+    }
+
+    Viz.axisLabel(ctx, rect, v.session > 0 ? 'Round R · Session ' + v.session : 'Round R', 'bottom');
+  },
+
+  /* -------- Subjective-valuation per-agent chart (Figure 12) --------
+     Cleaner cousin of Figure 6: per-agent V̂ trajectories without the
+     reported-message dots and lie-gap overlays. Reads the same
+     valuationHistory stream and overlays the dashed FV saw-tooth as
+     a fundamental-value reference. */
+  renderSubjvChart(v, config) {
+    const chart = this.charts.subjv;
+    if (!chart) return;
+    const { ctx, width, height } = chart;
+    Viz.clear(ctx, width, height);
+    const rect = Viz.plotRect(width, height, 44, 14, 16, 38);
+
+    const totalTicks = (config.roundsPerSession || 1) * config.periods * config.ticksPerPeriod;
+    const hist       = v.valuationHistory || [];
+    const byAgent    = {};
+    for (const row of hist) {
+      if (row.subjV == null) continue;
+      if (!byAgent[row.agentId]) byAgent[row.agentId] = [];
+      byAgent[row.agentId].push({ x: row.tick, y: row.subjV });
+    }
+
+    let yMax = config.dividendMean * config.periods * 1.4;
+    for (const row of hist) {
+      if (row.subjV != null && row.subjV > yMax) yMax = row.subjV;
+    }
+    yMax = Math.max(10, yMax * 1.08);
+
+    Viz.axes(ctx, rect, {
+      xMin: 0, xMax: totalTicks, yMin: 0, yMax,
+      xTicks: config.roundsPerSession || 1, yTicks: 4,
+      xFmt: x => this._roundLabel(v, config, x),
+      yFmt: y => y.toFixed(0),
+    });
+
+    // Dashed FV saw-tooth — same reference series as Figure 6.
+    const sessionPeriods = (config.roundsPerSession || 1) * config.periods;
+    const fvPoints = [];
+    for (let g = 1; g <= sessionPeriods; g++) {
+      const localP = ((g - 1) % config.periods) + 1;
+      const fv     = config.dividendMean * (config.periods - localP + 1);
+      fvPoints.push({ x: (g - 1) * config.ticksPerPeriod, y: fv });
+      fvPoints.push({ x:  g      * config.ticksPerPeriod, y: fv });
+    }
+    Viz.line(ctx, rect, fvPoints, { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.theme.amber, width: 2, dashed: true });
+
+    this._drawRoundDividers(ctx, rect, config, 0, totalTicks, v);
+
+    const ids     = Object.keys(byAgent).map(Number).sort((a, b) => a - b);
+    const nAgents = Object.keys(v.agents || {}).length || ids.length;
+    if (nAgents > UI.FAN_THRESHOLD) {
+      const buckets = Viz.bucketByX(hist, 'tick', 'subjV');
+      Viz.fanChart(ctx, rect, buckets, {
+        xMin: 0, xMax: totalTicks, yMin: 0, yMax,
+        colorEnv:    this._fanColor(this.theme.accent, 0.14),
+        colorIQR:    this._fanColor(this.theme.accent, 0.30),
+        colorMedian: this.theme.accent,
+        widthMedian: 2,
+      });
+      ctx.save();
+      ctx.font = '10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+      ctx.textBaseline = 'middle';
+      const y = rect.y + 12;
+      let legendX = rect.x + 10;
+      const drawEntry = (label, color) => {
+        ctx.fillStyle = color;
+        ctx.fillText(label, legendX, y);
+        legendX += ctx.measureText(label).width + 12;
+      };
+      drawEntry('▬ FVₜ', this.theme.amber);
+      drawEntry('▬ median V̂ᵢ,ₜ', this.theme.accent);
+      drawEntry('▮ IQR · envelope', this._fanColor(this.theme.accent, 0.50));
+      ctx.restore();
+    } else {
+      for (const id of ids) {
+        Viz.line(ctx, rect, byAgent[id], { xMin: 0, xMax: totalTicks, yMin: 0, yMax, color: this.agentColor(id), width: 1.6 });
       }
     }
 

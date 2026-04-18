@@ -582,6 +582,8 @@ math[display="inline"] { white-space: nowrap; }
 .chart-ownership { grid-column: span 6; }
 .chart-messages  { grid-column: span 8; }
 .chart-trust     { grid-column: span 4; }
+.chart-pnl       { grid-column: span 6; }
+.chart-subjv     { grid-column: span 6; }
 
 /* Hide the extended cluster unless body.extended is set by main.js.
    In strict-DLM mode we also force-hide .ext-only rows because the
@@ -1925,6 +1927,8 @@ body:not(.plan-ii):not(.plan-iii) .plan-llm-only { display: none !important; }
 .chart-valuation canvas { height: 220px; }
 .chart-utility canvas,
 .chart-ownership canvas { height: 200px; }
+.chart-pnl canvas,
+.chart-subjv canvas    { height: 200px; }
 .chart-messages canvas { height: 200px; }
 .chart-trust canvas    { height: 420px; }
 /* At N = 6 the trust matrix is 6×6 with per-agent name labels, so
@@ -2633,7 +2637,8 @@ body.n-small .agents-grid { max-height: none; overflow-y: visible; padding-right
   .chart-price, .chart-timeline, .panel-agents { grid-column: span 6; }
   .panel-book, .chart-bubble, .chart-volume, .chart-heatmap, .panel-feed { grid-column: span 6; }
   .chart-valuation, .chart-utility,
-  .chart-ownership, .chart-messages, .chart-trust { grid-column: span 6; }
+  .chart-ownership, .chart-messages, .chart-trust,
+  .chart-pnl, .chart-subjv { grid-column: span 6; }
   .panel-metrics, .panel-batch { grid-column: span 6; }
   .agents-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -2769,7 +2774,8 @@ body.n-small .agents-grid { max-height: none; overflow-y: visible; padding-right
   .panel-replay { grid-column: span 1; }
   .chart-valuation, .panel-metrics, .panel-batch,
   .chart-utility, .chart-ownership,
-  .chart-messages, .chart-trust { grid-column: span 1; }
+  .chart-messages, .chart-trust,
+  .chart-pnl, .chart-subjv { grid-column: span 1; }
 
   /* Batch tables: horizontal scroll when columns exceed viewport */
   .panel-metrics, .panel-batch { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -2789,6 +2795,8 @@ body.n-small .agents-grid { max-height: none; overflow-y: visible; padding-right
   .chart-valuation canvas { height: 180px; }
   .chart-utility canvas,
   .chart-ownership canvas { height: 170px; }
+  .chart-pnl canvas,
+  .chart-subjv canvas    { height: 170px; }
   .chart-messages canvas { height: 170px; }
   .chart-trust canvas    { height: 320px; }
   body.n-small .chart-trust canvas { height: 200px; }

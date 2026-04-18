@@ -701,6 +701,45 @@
     </figcaption>
   </section>
 
+  <section class="panel panel-chart figure chart-pnl ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 11</span>
+      <h2 class="fig-title">Per-Agent Profit &amp; Loss over Time</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="pnl"></span> = <span data-sym="wealth"></span> &minus; <span data-sym="wealth0"></span> <em>raw cash-equivalent change relative to initial endowment</em></div>
+    <canvas id="chart-pnl"></canvas>
+    <figcaption class="fig-caption">
+      <p>One line per agent showing running P&amp;L in experimental cents: the agent's mark-to-market wealth <span data-sym="wealth"></span> = <span data-sym="cash"></span> + <span data-sym="shares"></span> · <span data-sym="subjV"></span> minus its initial wealth <span data-sym="wealth0"></span>. Lines above the dashed zero-baseline indicate gains; lines below indicate losses. Unlike Figure 7's risk-adjusted utility, this chart is in raw monetary units so the per-agent <span data-sym="rhoI"></span> coefficient does not enter — every agent is graded on the same cash scale.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="pnl"></span></dt><dd>running profit and loss in cents at tick <em>t</em></dd>
+          <dt><span data-sym="wealth"></span></dt><dd>mark-to-market wealth = cash + inventory · subjective valuation</dd>
+          <dt><span data-sym="wealth0"></span></dt><dd>initial wealth at the start of the agent's first round</dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
+  <section class="panel panel-chart figure chart-subjv ext-only">
+    <header class="fig-head">
+      <span class="fig-num">Figure 12</span>
+      <h2 class="fig-title">Per-Agent Subjective Valuation over Time</h2>
+    </header>
+    <div class="fig-eq"><span data-sym="subjV"></span> <em>posterior valuation per share, evaluated each tick</em></div>
+    <canvas id="chart-subjv"></canvas>
+    <figcaption class="fig-caption">
+      <p>One line per agent showing the private subjective valuation <span data-sym="subjV"></span> the agent assigns to one share at tick <em>t</em>. Each line starts from the agent's prior, then drifts as the active plan's belief-update protocol blends in peer messages, regulator alerts, and (when complex dividends are on) the agent's own dividend sample. The amber dashed line is the risk-neutral fundamental <span data-sym="fv"></span>, included as a reference saw-tooth so over- and under-pricing are immediate to read off.</p>
+      <div class="fig-note">
+        <h4 class="fig-note-title">Note</h4>
+        <dl class="fig-note-list">
+          <dt><span data-sym="subjV"></span></dt><dd>subjective valuation of agent <em>i</em> at tick <em>t</em></dd>
+          <dt><span data-sym="fv"></span></dt><dd>risk-neutral fundamental value at tick <em>t</em></dd>
+        </dl>
+      </div>
+    </figcaption>
+  </section>
+
   <section class="panel panel-metrics figure ext-only" id="panel-metrics">
     <header class="fig-head">
       <span class="fig-num">Table 1</span>
