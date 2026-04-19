@@ -532,7 +532,7 @@
         <dl class="fig-note-list">
           <dt><span data-sym="price"></span></dt><dd>observed transaction price at tick <em>t</em></dd>
           <dt><span data-sym="fv"></span></dt><dd>theoretical fundamental value at the start of period <em>t</em></dd>
-          <dt><span data-sym="muD"></span></dt><dd>expected per-period dividend (drawn uniformly from {0, 2<span data-sym="muD"></span>})</dd>
+          <dt><span data-sym="expDiv"></span></dt><dd>expected per-period dividend. Under the baseline regime <span data-sym="expDiv"></span> = <span data-sym="muD"></span> = 10¢ (drawn from {0, 2<span data-sym="muD"></span>} with equal probability). Under the Complex Dividends regime the distribution becomes {0, 4, 10, 20, 40}¢ with probabilities {0.30, 0.25, 0.20, 0.15, 0.10} — the expected value is still 10¢ but the weighted sum is non-trivial, so each agent must estimate <span data-sym="expDiv"></span> from its own observed dividend history.</dd>
           <dt><span data-sym="bigT"></span></dt><dd>terminal period of the finite-life asset</dd>
         </dl>
       </div>
