@@ -91,14 +91,10 @@ const Sym = {
   meanP:     _wrap(_sub(_bar(_mi('P')), _mi('t'))),                           // P̄_t
   fv:        _wrap(_sub(_row(_mi('F'), _mi('V')), _mi('t'))),                 // FV_t
   fvT:       _wrap(_sub(_row(_mi('F'), _mi('V')), _mi('T'))),                 // FV_T
-  fvDef:     _wrap(_row(                                                      // FV_t = E[d_t]·(T − t + 1)
+  fvDef:     _wrap(_row(                                                      // FV_t = (T − t + 1)·μ_d
     _sub(_row(_mi('F'), _mi('V')), _mi('t')), _mo('='),
-    _mi('E'), _mo('['), _sub(_mi('d'), _mi('t')), _mo(']'),
-    _mo('·'),
     _mo('('), _mi('T'), _mo('−'), _mi('t'), _mo('+'), _mn('1'), _mo(')'),
-  )),
-  expDiv:    _wrap(_row(                                                      // E[d_t]
-    _mi('E'), _mo('['), _sub(_mi('d'), _mi('t')), _mo(']'),
+    _mo('·'), _sub(_mi('μ'), _mi('d')),
   )),
   rhoT:      _wrap(_sub(_mi('ρ'), _mi('t'))),                                 // ρ_t
   rhoDef:    _wrap(_row(                                                      // ρ_t = P_t / FV_t
