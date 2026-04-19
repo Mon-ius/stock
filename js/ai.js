@@ -510,9 +510,12 @@ const AI = {
         ``,
         `【Market Rules】`,
         `1. This is a ${periods}-period asset market.`,
-        `2. Each asset pays a dividend of 0 or ${dividendAvg * 2} in each remaining period, with a 50% probability of each.`,
-        `3. Therefore, the expected dividend for each remaining period is ${dividendAvg}.`,
-        `4. If the current remaining period is k, then the fundamental value = ${dividendAvg} × k.`,
+        ...(tunables && tunables.applyComplexDividends
+          ? [`2. Each asset pays a dividend drawn from {0, 4, 10, 20, 40}¢ with probabilities {30%, 25%, 20%, 15%, 10%} in each remaining period.`,
+             `3. The expected dividend per period is E[d_t] = ${dividendAvg}.`]
+          : [`2. Each asset pays a dividend of 0 or ${dividendAvg * 2} in each remaining period, with a 50% probability of each.`,
+             `3. Therefore, the expected dividend for each remaining period is E[d_t] = ${dividendAvg}.`]),
+        `4. If the current remaining periods are k, then the fundamental value FV = E[d_t] × k = ${dividendAvg} × k.`,
         `5. All traders know how this fundamental value is calculated.`,
         `6. Double Auction Rules:`,
         `   - You can buy the lowest ask immediately.`,

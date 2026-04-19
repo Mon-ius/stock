@@ -1123,9 +1123,9 @@ const UI = {
 
     this._drawRoundDividers(ctx, rect, config, xMin, xMax, v);
 
-    // Deterministic FV saw-tooth — FV_t = (T − t + 1)·μ_d resets at
+    // Deterministic FV saw-tooth — FV_t = E[d_t]·(T − t + 1) resets at
     // each round start, so the line climbs back to maxFV at every
-    // round boundary and declines to μ_d at every round end.
+    // round boundary and declines to E[d_t] at every round end.
     const fvPoints = [];
     for (let g = 1; g <= sessionPeriods; g++) {
       const localP = ((g - 1) % config.periods) + 1;
@@ -2221,7 +2221,7 @@ const UI = {
 
     // ---- Dufwenberg, Lindqvist & Moore (2005) market-quality statistics.
     // All of these operate on the per-period mean trade price P̄_t and the
-    // deterministic fundamental value FV_t = (T − t + 1)·μ_d. With the
+    // deterministic fundamental value FV_t = E[d_t]·(T − t + 1). With the
     // multi-round session wrapper a "period" key needs to be (round,
     // period) so a round-2 period-5 trade isn't lumped with a round-1
     // period-5 trade. We index every aggregator by the global period
