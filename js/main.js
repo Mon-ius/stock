@@ -17,9 +17,9 @@ const App = {
   //
   //   periods, dividendMean   — paper constants from Dufwenberg,
   //                             Lindqvist & Moore (2005) §I (asset
-  //                             life = 10 periods, E[d_t] = 10¢,
-  //                             so FV_t = E[d_t]·(T − t + 1)). Shown
-  //                             in the "Paper constants" panel.
+  //                             life = 10 periods, E[dividend] = 10¢,
+  //                             so FV_t = 10 · (T − t + 1)). Shown in
+  //                             the "Paper constants" panel.
   //   ticksPerPeriod          — simulator constant. DLM 2005 uses a
   //                             continuous 2-minute z-Tree auction;
   //                             this sim discretizes each period into
@@ -88,7 +88,7 @@ const App = {
     applyBias:            true,
     applyNoise:           true,
     // When true the per-period dividend is drawn from a non-trivial
-    // 5-point distribution with the same mean E[d_t] = 10¢ as the paper's
+    // 5-point distribution with the same mean μ_d = 10¢ as the paper's
     // {0, 20}¢ coin flip, and each UtilityAgent builds its prior from
     // its own empirical dividend mean plus shrinking computational
     // noise instead of from the exact FV — a bounded-rationality

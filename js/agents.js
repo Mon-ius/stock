@@ -578,9 +578,9 @@ class UtilityAgent extends Agent {
 
     // Frozen baseline — used to normalize utility so U(w0) = 1. The
     // initial price reference is FV at the top of period 1 of round 1
-    // (= E[d_t] × T = dividendMean × periods, usually 100¢), which
-    // matches the mark-to-market wealth the agent would compute on the
-    // very first tick if the first trade printed at FV.
+    // (= dividendMean × periods, usually 100¢), which matches the
+    // mark-to-market wealth the agent would compute on the very first
+    // tick if the first trade printed at FV.
     this.initialWealth = this.cash + this.inventory * 100;
   }
 
@@ -653,8 +653,8 @@ class UtilityAgent extends Agent {
 
     // Bounded-rationality FV estimate (Advanced → "Complex Dividends").
     // When that toggle is ON the dividend draws come from a non-trivial
-    // 5-point distribution whose mean happens to still be E[d_t] — but
-    // the agent does *not* get to use the true mean. Instead it estimates
+    // 5-point distribution whose mean happens to still be μ_d — but the
+    // agent does *not* get to use the true mean. Instead it estimates
     // μ̂_i from its own empirical dividend history (filtered to rounds
     // it has actually observed, so a fresh round-4 replacement starts
     // with an empty sample) plus a per-tick computational-noise term

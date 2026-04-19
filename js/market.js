@@ -90,8 +90,7 @@ class OrderBook {
 /* Complex-dividend distribution used when the Advanced → "Complex
  * Dividends" toggle is ON. Five outcomes with non-equal probabilities;
  * the weighted mean is exactly 10¢ (= 0·0.30 + 4·0.25 + 10·0.20 + 20·0.15
- * + 40·0.10), matching `dividendMean` so E[d_t] = 10 and FV_t = E[d_t]·(T−t+1)
- * is unchanged.
+ * + 40·0.10), matching `dividendMean` so FV_t = 10·(T−t+1) is unchanged.
  * The whole point is that the distribution's *shape* is non-trivial: a
  * human subject cannot read that mean off the table at a glance, which
  * motivates the matching bounded-rationality prior in UtilityAgent. */
@@ -107,14 +106,11 @@ const COMPLEX_DIVIDEND_DISTRIBUTION = [
  * Market — owns the book, the dividend process, and the append-only
  * time-series arrays used for charts and replay.
  *
- * The asset pays a per-period dividend d drawn from a distribution with
- * E[d_t] = μ_d (configured as `dividendMean`, default 10). Under the
- * baseline regime d ∈ {0, 2·μ_d} with p = 0.5; under the Complex
- * Dividends regime d is drawn from the 5-point distribution in
- * COMPLEX_DIVIDEND_DISTRIBUTION. Fundamental value at the *start* of
- * period t is FV_t = E[d_t]·(T − t + 1): the remaining expected
- * dividend stream. After period T's dividend is paid the asset is
- * worthless.
+ * The asset pays a per-period dividend d ∈ {0, 2·μ} with p = 0.5, so
+ * E[d] = μ (configured as `dividendMean`, default 10). Fundamental value
+ * at the *start* of period t is FV_t = μ × (T − t + 1): the remaining
+ * expected dividend stream. After period T's dividend is paid the asset
+ * is worthless.
  *
  * DLM 2005 nests T periods inside a *session* of `roundsPerSession`
  * consecutive markets ("rounds"). The Market therefore also tracks a
